@@ -7,20 +7,27 @@ require Exporter;
 
 our @ISA = qw(Exporter);
 
-# these are all expected to become unecessary
-our $GENOME_HOME = "/seq/genome"; # base directory for genome databases
-our $DBSERVER = "mysql"; # server type, as used for calling DBI::DBD driver
-our $DBHOST = "sigler.bu.edu"; # location of server
+# these are all expected to become unecessary, default db stuff should get
+# set during install in the DB module
+#our $GENOME_HOME = "/seq/genome"; # base directory for genome databases
+#our $DBSERVER = "mysql"; # server type, as used for calling DBI::DBD driver
+#our $DBHOST = "sigler.bu.edu"; # location of server
 # default machine to do heavy work like blast and PIMA on
-our $CPUSERVER = "vavilov";
+our $CPUSERVER = $ENV{HOST};
 
 our %EXPORT_TAGS = ( 'all' => [ qw(check_type tbl_to_fa tbl_to_ig fa_to_tbl ig_to_tbl
-    dna_to_aa complement six_frame aa_hash) ] );
+    dna_to_aa complement six_frame aa_hash wu_blast) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT = qw($GENOME_HOME $DBSERVER $DBHOST $CPUSERVER);
 
-our $VERSION = '0.461';
+our $VERSION = '0.466';
 our $DEBUG = 0;
+our $RET_CODE = sub {
+        my $ar_ret = shift;
+        my $ret = shift;
+        print "ref?->$ar_ret\nseq_in->$ret\n" if $DEBUG >= 3;
+        push(@$ar_ret,$ret);
+    }; # default return method
 
 =head1 NAME
 
@@ -31,6 +38,14 @@ CompBio - Core library for some basic methods useful in computational biology/bi
 use CompBio;
   
 my $cbc = new->CompBio;
+
+$AR_faseqs = $cbc->tbl_to_fa(\@tblseqs);
+
+or
+
+use CompBio qw(tbl_to_fa);
+
+$AR_faseqs = tbl_to_fa(\@tblseqs);
 
 =head1 DESCRIPTION
 
@@ -54,6 +69,10 @@ no error checking by and large, so incorrect input could cause bizzare
 behavior and/or a noisy death. If you want a flexible interface with lots
 of error checking and deep levels of verbosity, use L<CompBio::Simple> - that's
 its job.
+
+Latest version is available through SourceForge
+http://sourceforge.net/projects/compbio/, or on the CPAN
+http://www.cpan.org/authors/id/S/SE/SEANQ/CompBio-0.461.tar.gz.
 
 Thanks!
 
@@ -92,7 +111,7 @@ http://iubio.bio.indiana.edu/soft/molbio/readseq/
 Construct an object for invoking methods in CompBio.
 
 =cut
-sub new($%) {
+sub new {
     my ($proto,%parameters) = @_;
     my $class = ref($proto) || $proto;
     my $self = {};
@@ -145,11 +164,15 @@ sub check_type {
     
     my %params = @_ ? @_ : ();
     local $DEBUG = exists $params{DEBUG} ? $params{DEBUG} : $DEBUG;
+    print "In check_type\n" if $DEBUG >= 2;
     print "Checking type for:\n",join("\n",@$seq[0..2]),"\n" if $DEBUG >= 3;
     
     # TBL should only accept aa codes
-    if ($$seq[0] =~ /^.+?\t[CTUAGctuag]+\*?(\t|\n|$)/) { return "CDNA" }
-    elsif ($$seq[0] =~ /^.+?\t[A-Za-z!\.]+\*?(\t|$)/) { return "TBL" }
+    # TBL and CDNA listed as multiline because of how sequences loaded to
+    # test a file - given the way these are written now, should this even be an
+    # array - none use $$seq[1]. Or keep just for format compat?
+    if ($$seq[0] =~ /^.+?\t[CTUAGctuag]+\*?(\t|\n|$)/m) { return "CDNA" }
+    elsif ($$seq[0] =~ /^.+?\t[A-Za-z!\.]+\*?(\t|$)/m) { return "TBL" }
     elsif ($$seq[0] =~ /^>.+\n[A-Za-z!\.]+\*?$/m) { return "FA" }
     elsif ($$seq[0] =~ /^(;.*\n)+\S+\n[A-Za-z!\.\*]+1?$/m) { return "IG" }
     elsif ($$seq[0] =~ /^[CTUAGMRWSYKVHDBXNctuagmrwsykvhdbxn]+\*?$/m) { return "RAW" }
@@ -178,21 +201,28 @@ sub tbl_to_fa {
     
     my %params = @_ ? @_ : ();
     local $DEBUG = exists $params{DEBUG} ? $params{DEBUG} : $DEBUG;
+    local $RET_CODE = exists $params{RET_CODE} ? $params{RET_CODE} : $RET_CODE;
+    print "In tbl_to_fa\n" if $DEBUG >= 2;
     my @ret = ();
 
     foreach (@$aref_seqs) {
-        chomp;
-        my @fields = split(/\t/);
+        my $seq = $_;
+        chomp $seq;
+        # using $seq is complete black magic. Somehow FETCH was being called
+        # for ArrayFile when this split occurs, but not using the aliased $_
+        # aliviates this. <SIGH> Someday I hope someone will explain this to me
+        my @fields = split(/\t/,$seq);
+        print "ID: $fields[0]\nSequence: $fields[1]\n" if $DEBUG >= 2;
         my $str = ">$fields[0]";
         if (@fields > 2) { $str .= " " . join(" ",@fields[2 .. $#fields]) }
         # generate fasta sequence lines at 80 char per line (including newline)
         my $tmpl = "a79" x ((length($fields[1])/79) + 1);
         $str .= "\n" . join("\n",(unpack($tmpl,$fields[1])));
         $str =~ s/\n$//;
-        push(@ret,$str);
+        &$RET_CODE(\@ret,$str);
     } # foreach submitted sequence
-    
-    return \@ret;
+    return \@ret if @ret;
+    return 0;
 } # tbl_to_fa
 
 =head2 tbl_to_ig
@@ -200,7 +230,7 @@ sub tbl_to_fa {
 Converts a sequence in table (tab delimited) format to .ig format. Accepts
 sequences in a referenced array, one record per index.
 
-C<$aref_igseqs = $cbc->tbl_to_ig(\@tbl_seqs,%params);>
+C<$aref_igseqs = $cbc-&gt;tbl_to_ig(\@tbl_seqs,%params);>
 
 Extra data fields in the table format will be placed on a single comment
 line (;) in the ig output.
@@ -214,22 +244,26 @@ sub tbl_to_ig {
     
     my %params = @_ ? @_ : ();
     local $DEBUG = exists $params{DEBUG} ? $params{DEBUG} : $DEBUG;
+    local $RET_CODE = exists $params{RET_CODE} ? $params{RET_CODE} : $RET_CODE;
+    print "In tbl_to_ig\n" if $DEBUG >= 2;
     my @ret = ();
     
     foreach (@$aref_seqs) {
-        chomp;
-        my @fields = split(/\t/);
+        my $seq = $_;
+        chomp $seq;
+        my @fields = split(/\t/,$seq);
         my $str = ";";
-        if (@fields > 2) { $str .= "\n;" . join(" ",@fields[2 .. $#fields]) }
+        if (@fields > 2) { $str .= "\n;" . join("\n;",@fields[2 .. $#fields]) }
         $str .= "\n$fields[0]\n"; # seperators, comment & id lines
         $fields[1] .= "1";
         my $tmpl = "a79" x ((length($fields[1])/79) + 1);
         $str .= join("\n",(unpack($tmpl,$fields[1])));
         $str =~ s/\n$//;
-        push(@ret,$str);
+        &$RET_CODE(\@ret,$str);
     } # foreach submitted sequence
 
-    return \@ret;
+    return \@ret if @ret;
+    return 0;
 } # tbl_to_ig
 
 =head2 fa_to_tbl
@@ -257,20 +291,21 @@ sub fa_to_tbl {
     
     my %params = @_ ? @_ : ();
     local $DEBUG = exists $params{DEBUG} ? $params{DEBUG} : $DEBUG;
+    local $RET_CODE = exists $params{RET_CODE} ? $params{RET_CODE} : $RET_CODE;
+    print "In fa_to_tbl\n" if $DEBUG >= 2;
     my @ret = ();
 
     # traverse referenced array and convert
     foreach (@$aref_seqs) {
-        my $seqrec = $_; # to avoid calling non-existant STORE on tied array
-        chomp $seqrec;
+        #my $seqrec = $_; # to avoid calling non-existant STORE on tied array
+        chomp;
         my $tbl = my $rem = "";
         
-    	foreach (split(/[\n\r]+/,$seqrec)) {
+    	foreach (split(/[\n\r]+/)) {
     	    my $test = $_;
             if ($test =~ /^\s*>(\S+)\s*(.*)/) {
                 my $sig = $1;
                 $rem = $2;
-                # maybe a better keyword than CLEAN?
                 if ($test =~ s/^(\S+\|\S+) /$1\t/) {
                     $test =~ s/>\w+\|(\d+)\|//;
                     $sig = $1 if $1;
@@ -278,10 +313,11 @@ sub fa_to_tbl {
                     $rem = $_;
                 } # turn those annoying genbank pipes into tabs
                 
+                # maybe a better keyword than CLEAN?
                 if ($params{'CLEAN'} && $sig =~ /([^\s\|\\?\/!*]{4,})/) {
                     $sig = $1;
                 } # elsif
-                print "In fa_to_tbl using $sig as tbl id field\n" if $DEBUG >= 1;
+                print "In fa_to_tbl using $sig as tbl id field\n" if $DEBUG >= 2;
     	        $tbl = "$sig\t";
     	    } # if id line
 
@@ -291,10 +327,11 @@ sub fa_to_tbl {
     	    } # else
         } # foreach line in seqrec
         $tbl .= "\t$rem" if $rem;
-        push(@ret,$tbl);
+        &$RET_CODE(\@ret,$tbl);
     } # foreach seqrec
     
-    return \@ret;
+    return \@ret if @ret;
+    return 0;
 } # fa_to_tbl
 
 =head2 ig_to_tbl
@@ -317,7 +354,9 @@ sub ig_to_tbl {
     
     my %params = @_ ? @_ : ();
     local $DEBUG = exists $params{DEBUG} ? $params{DEBUG} : $DEBUG;
+    local $RET_CODE = exists $params{RET_CODE} ? $params{RET_CODE} : $RET_CODE;
     my @ret = ();
+    print "In ig_to_tbl\n" if $DEBUG >= 2;
 
     foreach (@$aref_seqs) { # traverse referenced array and convert
     	chomp;
@@ -349,10 +388,11 @@ sub ig_to_tbl {
         $tbl =~ s/1$//;
         $tbl = join("\t",($tbl,@comments));
         $tbl =~ s/\s+$//;
-        push(@ret,$tbl);
+        &$RET_CODE(\@ret,$tbl);
     } # foreach seqrec
 
-    return \@ret;
+    return \@ret if @ret;
+    return 0;
 } # ig_to_tbl
 
 =head2 dna_to_aa
@@ -386,12 +426,13 @@ sub dna_to_aa {
     
     my %params = @_ ? @_ : ();
     local $DEBUG = exists $params{DEBUG} ? $params{DEBUG} : $DEBUG;
+    local $RET_CODE = exists $params{RET_CODE} ? $params{RET_CODE} : $RET_CODE;
     my @ret = ();
 
     my %AA = aa_hash();
-    $$sref_seq = uc($$sref_seq);
-    $$sref_seq =~ tr/U/T/;
-    print "in dna_to_aa recieved:\n",$$sref_seq,"\n" if $DEBUG > 1;
+    my $dna = uc($$sref_seq);
+    $dna =~ tr/U/T/;
+    print "in dna_to_aa using:\n",$dna,"\n" if $DEBUG > 2;
     
     if($params{'ALTCODE'}) {
     	while ((my $codon,my $aar) = each %{$params{'ALTCODE'}}) {
@@ -403,13 +444,13 @@ sub dna_to_aa {
     } # if
 
     if ($params{'C'}) { # convert all characters to thier complement
-    	$sref_seq = complement($sref_seq);
+    	$sref_seq = ${complement(\$dna)};
 #        die "Recieved C";
     } # if
     
     my $ret = "";
     # we allow any non-space character in match in case someone wants odd alternate coding
-    while ($$sref_seq =~ /(\S{3})/g) {
+    while ($dna =~ /(\S{3})/g) {
         $ret .= $AA{$1} || "X";
     } # while translating sequence
     
@@ -439,6 +480,7 @@ sub complement {
     
     my %params = @_ ? @_ : ();
     local $DEBUG = exists $params{DEBUG} ? $params{DEBUG} : $DEBUG;
+    local $RET_CODE = exists $params{RET_CODE} ? $params{RET_CODE} : $RET_CODE;
     my @ret = ();
 
     $$sref_seq =~ tr/[ACTUGMRYKVHDBkyrmbdhv]/[TGAACkyrmbdhvMRYKVHDB]/;
@@ -484,6 +526,7 @@ sub six_frame {
     
     my %params = @_ ? @_ : ();
     local $DEBUG = exists $params{DEBUG} ? $params{DEBUG} : $DEBUG;
+    local $RET_CODE = exists $params{RET_CODE} ? $params{RET_CODE} : $RET_CODE;
     my @ret = ();
     my %AA = aa_hash();
 
@@ -501,6 +544,7 @@ sub six_frame {
     $params{'OUTFILE'} ||= "";
     my $fh_out = "";
 
+# this section should now be hadled from Simple using RET_CODE
     if ($params{'OUTFILE'} eq "STDOUT") {
         $fh_out = *STDOUT;
     } # send to stdout
@@ -607,77 +651,106 @@ sub _stop {
 
 =head2 wu_blast
 
-A simple interface to the Washington University distribution of blast. Currently
-has only been tested with the 2.0a8MP release.
+A simple interface to the Washington University distribution of blast. Only recently
+tested with full 2.0MP-WashU release. I do however stick to using the compatability
+features so it it should work with both the licensed and free releases of WUblast.
 
+wu_blast requires two arguments, a sequence database filename or a reference to
+an array containing the sequence(s) to search, and the query sequence filename or
+a reference to an array containing the sequence to query with. Sequence files need
+to be in fasta format and sequences contained in arrays need to be in table format.
+For more versatility, use CompBio::Simple::blast. One thing wu_blast will do is
+prepare the db for searching if it isn't set up in advance; this does require
+you have write permision in the location of the base sequence file, and sufficient
+room in your quota (if used).
 
- Takes series of arguments qw($method $database $queryfile 
-"parameter list","noise",$cpu_server). Method can be any allowed blast method. Database is the blastable fasta format 
-database to be searched. queryfile is the file containg the fasta sequence you wish to use in the 
-blast comparison. "parameter list" is a quote inclosed set of parameter arguments to hand blast.
-Optional final arguments are the noise or debig level to use (default is quiet), "quiet" tells blast
-to operate silently, anything else prints some debugging messages and allows any errors from blast
-to be printed. Final argument is for the 'cpu server' where blast is to execute and must follow
-a noise level argument.
+Options:
 
-	Only blastp and blastx  have default parameters at moment:
-		blastp  B=10  e=1e-3  filter=seg+xnu
-		blastx  B=25  e=1e-3  filter=seg+xnu
-	If any parameters are supplied method will not use any default values!
+METHOD: Alternate method to use for sequence comparison. Default is blastp.
 
-C<$blast_out = blast('blastp',$fa_file,$queryfile,"-B=0 -matrix=BLOSUM62","quiet"); >
-	
+PARAMS: Optional parameters to hand to the blast method. See the your local
+documentation for the method chosen to see what options are available.
+
+SERVER: Machine to use as the blast server. Defaults to the global $CPUSERVER.
+rsh is currently used to launch the proccess.
+
+BLASTPREP: Alternate method to use to prepare a sequence database for being
+searched using the chosen blast method. Default is setdb.
+
+C<$blast_out = blast($fa_file,$queryfile,(PARAMS =&gt; "-B=0 -matrix=BLOSUM62"));>
+
 =cut
 sub wu_blast {
-    my ($method,$database,$query_file,$parameters,$noise_level,$cpu) = @_;
-    if ($method eq "help") { &help }
-    $noise_level = "quiet" unless $noise_level;
-
-    print "$method , $database , $query_file , $parameters , $cpu\n" if $noise_level ne "quiet";
-    if ($database !~ m{/\w+/.+}) { $database = $ENV{PWD} . "/" . $database }
-    if ($query_file !~ m{/\w+/.+}) { $query_file = $ENV{PWD} . "/" . $query_file }
-
-    my $envstring = "";
-    my $cpuserver = $cpu || "vavilov";
-    my $executable = "";
+    my $self = shift;
+    my $db = (ref($self) && ref($self) ne "SCALAR") ? shift : $self;
+    my $refDb = ref($db);
+    _help() if (! $refDb && $db eq "help");
+    _error("Not given a valid filename or scalar reference for database!\n",1)
+        unless -e $db || $refDb eq "ARRAY";
     
-    if (-e "/usr/local/bin/$method") { $executable = "/usr/local/bin/$method" }
-    elsif ($ENV{HOST} && $ENV{HOST} eq $cpuserver) {
-    	$executable = "/seq/genome/blastserver/$ENV{OSTYPE}/" . $method;
-    } # if
+    my $query = shift;
+    my $refQuery = ref($query);
+    _error("Not given a valid filename or scalar reference for database!\n",1)
+        unless -e $query || $refQuery eq "ARRAY";
+    
+    my %params = @_ ? @_ : ();
+    local $DEBUG = exists $params{DEBUG} ? $params{DEBUG} : $DEBUG;
+    local $RET_CODE = exists $params{RET_CODE} ? $params{RET_CODE} : $RET_CODE;
+    # change defaults set here to suit local preferences
+    # make sure BLASTPREP is set appropriately if you change default method
+    my $method = $params{METHOD} || "blastp";
+    my $parameters = $params{PARAMS} || '';
+    local $CPUSERVER = exists $params{SERVER} ? $params{SERVER}  : $CPUSERVER;
+    # change this if your blast programs reside somewhere else
+    my $base_dir = "/usr/local/bin/";
+    # if they are in multiple locations, good luck!
+    my $result = '';
+    
+#    $ENV{"BLASTFILTER"} = "/usr/local/ncbi/blast/filter/";
+#    $ENV{"BLAST_FILTER"} = "/usr/local/ncbi/blast/filter/";
+    
+    print join(", ",($base_dir,$method,$db,$query,$parameters,$CPUSERVER)),
+        "\n" if $DEBUG;
+    
+    if ($refDb eq "ARRAY") {
+    
+    } # make .fa file of db
+    if ($refQuery eq "ARRAY") {
+    
+    } # make .fa file of query sequence
+    
+    unless (4) { # ? just look for 4 files with the $db base name?
+    
+    } # prepare database for blast if not already done
+    
+    if ($ENV{HOST} && $ENV{HOST} =~ /^$CPUSERVER/) {
+    
+    } # no need to set up for and use rsh
     else {
-    	my $exe = qq(/usr/bin/rsh -n $cpuserver "env | grep OSTYPE");
-	print "$exe\n" if $noise_level ne "quiet";
-    	chomp(my $temp = `$exe`);
-	$temp =~ s/OSTYPE=//;
-	unless ($temp eq "osf1" || $temp eq "solaris") {
-	    die "Can't determine where blast executable is for $temp.";
-	} # if
-	$executable = "/seq/genome/blastserver/$temp/" . $method;
-    } # else
-
-    $ENV{"BLASTFILTER"} = "/usr/local/ncbi/blast/filter/";
-    $ENV{"BLAST_FILTER"} = "/usr/local/ncbi/blast/filter/";
-
-    if($method =~ /blast/) {
-    	# these are not formated properly for a simple rsh sesion
-	$envstring = "setenv BLASTFILTER /usr/local/ncbi/blast/filter/;source /etc/cshrc.aliases";
-    } # if
-    
-    if (! defined $parameters) {
-    	open (PARAMS,"$GENOME_HOME/blastserver/presets.tbl") or die "Can't open PARAMS for blast: $!\n";
-    
-    	while (defined(<PARAMS>)) {
-	    if (/$method\t(\w+)\t(.+)/) { $parameters .= "-$1=$2 " }
-    	} # while
-    	close PARAMS or die "can't close PARAMS in blast: $!\n";
-    } # if
-    
-    my $exestring = qq(/usr/bin/rsh -n $cpuserver "$envstring;$executable $database $query_file $parameters");
-    if ($ENV{HOST} && $ENV{HOST} eq $cpuserver) { $exestring = "$executable $database $query_file $parameters" }
-    my $result = "";
-    if ($noise_level eq "quiet") { $result = `$exestring 2>/dev/null` }
-    else { $result = `$exestring` }
+        # make sure the names contain the full path
+        if ($db !~ m{/\w+/.+}) { $db = $ENV{PWD} . "/" . $db }
+        if ($query !~ m{/\w+/.+}) { $query = $ENV{PWD} . "/" . $query }
+        # change this to the location of blast methods
+        my $executable = $base_dir . $method;
+        
+        # this currently only works for tcsh I think, and obviouslt /etc/cshrc.aliases
+        # is a BMERC convention. So, a way needs to be found to handle this part
+        # either by finding a way to make rsh DTRT and run login stuff to set 
+        # ENV, or I'll need to have rsh run a utility of my design that gets and
+        # sets nec. stuff and runs blast - what a waste!
+        my $envstring = "setenv WUBLASTMAT = $ENV{WUBLASTMAT};source /etc/cshrc.aliases";
+        
+        my $exestring = "/usr/bin/rsh -n $CPUSERVER \"$envstring;$executable " .
+            "$db $query $parameters";
+        print $exestring if $DEBUG;
+        
+        # if not debugging, supress blasts normal warning, whch includes
+        # sillyness like not reporting some alignments due to the -B value
+        if (! $DEBUG) {
+            $result = `$exestring 2>/dev/null`;
+        } # I don't think this will work off *nix - how else to do?
+        else { $result = `$exestring` }
+    } # use rsh to launch blast method
         
     return $result;
 } # blast
@@ -1058,6 +1131,29 @@ Started working on bringing the utility programs included into using
 CompBio::Simple, using dna_to_aa as first trial. Also some small changes
 to docs.
 
+=item 0.464
+
+Major updates and alterations. Got most of the CompBio utils at least minimally
+working. Added $RET_CODE usage to CompBio, setting old behavior as default, but
+allowing Simple to provide as a parameter, so that return formating (such as
+setting dna_to_aa to return in fasta) and file/STDOUT behavior is done during
+process, reducing memory usage. Matching major alterations to Simple.
+
+=item 0.466
+
+NOTE .464 was acidently never fully distributed as such. Sorry!
+
+Project has been added to SourceForge and the modules list on CPAN.
+
+Worked out some more bugs, mostly cropping up from interactions with utils
+such as tbl_to_fa, which interface through Simple. Mainly found places where
+lazy programming broke using the files tied to an array, so had to use less of
+$_. Things are shaking out nicely, and I think all the core bits are now in
+place. Once the utils are done, I'll do a major code cleanup and comment run
+and step up to 0.5 and push release. Finishing adding converters and fixing any
+reported bugs (new converters shouldn't add any new bugs, except inside the new
+methods) will benchmark going to 0.6.
+
 =back
 
 =head1 TO DO - in no particular order
@@ -1065,6 +1161,9 @@ to docs.
 I like the basic design so far - except where large sequence sets are to be munged.
 There this becomes a seriouse memory hog. Some faster & more efficient way
 needs to be provided when dealing with files & large data sets.
+
+complement and dna_to_aa need to be loop enabled, also alowing
+&$RET_CODE(\@ret,$str); to be used.
 
 **Got it - needs work!** Get the full release of WashU Blast and make sure the
 blast stuff works with it as well.
@@ -1104,6 +1203,12 @@ use a bunch of modules all in the CompBio namespace.
 _error (all packages) needs to correctly report line where error occured.
 Can this be done through caller or do I need to pass manually?
 
+hmmm, how about a simple tm calculator for primers? I seem to be able to
+find lots of them that work through web interface, or more complex primer
+selection software, but none that plug and play to a perl program, and I'm
+needing one. Not a primer selecter, just a _solid_ (more than just GC content),
+straight foward Tm calculator.
+
 =head1 COPYRIGHT
 
 Developed at the BioMolecular Engineering Research Center at Boston
@@ -1119,7 +1224,10 @@ and/or modify it under the same terms as Perl itself.
 Sean Quinlan, seanq@darwin.bu.edu
 
 Please email me with any changes you make or suggestions for changes/additions.
-Latest version is available under ftp://mcclintock.bu.edu/BMERC/perl/. Thank you!
+Latest version is available through SourceForge
+L<http://sourceforge.net/projects/compbio/>, or on the CPAN
+L<http://www.cpan.org/authors/id/S/SE/SEANQ/CompBio-0.461.tar.gz>.
+Thank you!
 
 I would like to thank the staff at the BMERC for being my guinee pigs for
 the past few years, Jim Freeman who got me into this and left me with flint

@@ -6,9 +6,11 @@ use warnings;
 use Carp;
 use Tie::Array;
 our @ISA = ('Tie::Array');
+use CompBio qw(fa_to_tbl ig_to_tbl);
 require Exporter;
+my @STORED = ();
 
-our $VERSION = '0.20';
+our $VERSION = '0.22';
 
 =head1 NAME
 
@@ -63,6 +65,7 @@ sub FETCH {
     my $format = $$self[1];
     my $seqrec = "";
     my $call = join(":",((caller(1))[3,2]));
+    #print "$last_call ne $call in FETCH?\n";
     if ($last_call ne $call) {
         $last_call = $call;
         seek $fh,0,0;
@@ -87,6 +90,7 @@ sub FETCH {
             $pos = tell $fh;
         } # get lines until we drop out at eof, or we see the next > indicator
         $seqrec = join("\n",@lines);
+        $seqrec = ${fa_to_tbl([$seqrec])}[0];
     } # get next fasta record
     elsif ($format eq "IG") {
         my $pos = tell $fh;
@@ -107,17 +111,24 @@ sub FETCH {
     } # get next ig record
 } # read data
 
+sub STORE {
+    #push(@STORED,shift);
+} # STORE - lets try a simple kludge
+
 sub FETCHSIZE {
     my $self = shift;
     confess "I ($self) am not a class method!" unless ref $self;
     my $fh = $$self[0];
     my $format = $$self[1];
+    #print "In FETCHSIZE\n";
     
+    # somehow using <$fh> without my $l = causes FETCH to be called!?! This causes
+    # quite a few errors
     if ($format =~ /TBL|RAW|CDNA/) {
         my $pos = tell $fh;
         seek $fh,0,0;
         my $c = 0;
-        while (<$fh>) { $c++ }
+        while (my $l = <$fh>) { $c++ }
         seek $fh,$pos,0;
         return $c;
     } # single line records
@@ -133,8 +144,8 @@ sub FETCHSIZE {
         my $pos = tell $fh;
         seek $fh,0,0;
         my $c = my $on = 0;
-        while (<$fh>) {
-            if (/^\s*;/) {
+        while (my $l = <$fh>) {
+            if ($l =~ /^\s*;/) {
                 $on = 1;
             } # comment/seperator lines found
             elsif ($on) {
@@ -167,6 +178,12 @@ __END__
 Original version; created by h2xs 1.20 with options
 
   -AXC -n CompBio::Simple::ArrayFile
+
+=item 0.22
+
+Added a STORE method, which does nothing other than make happy functions (such
+as chomp) that want to store against the alias. I hope I don't regret taking the
+easy way out here later.
 
 =head1 TO DO
 

@@ -5,14 +5,15 @@ use CompBio::Simple;
 use Getopt::Long;
 
 if(! defined $ARGV[0]){
-    print "fa_to_tbl \n";
+    print "fa_to_tbl <-help|-out> (seqfile.fa|-)\n";
     exit;
 }#if
 
-mmy $stdin = ""; # '' allows - in command args to indicate input from stdin (console or pipe)
+my $stdin = "";
 my %opt = ();
-my $result = GetOptions(\%opt,'help|h','' => \$stdin,'out|o=s');
-my $VERSION = '0.01';
+# '' allows - in command args to indicate input from stdin (console or pipe)
+my $result = GetOptions(\%opt,'help|h','' => \$stdin,'out|o=s','v+');
+my $VERSION = '0.13';
 
 if ($opt{"help"}) { exec "perldoc $0" }
 
@@ -26,33 +27,35 @@ fa_to_tbl - Convert sequence records in fasta format to table format
 
 =head1 DESCRIPTION
 
-
+Convert sequence records in fasta format to table format. Input sequences can be
+in a file or piped in on the command line (see L<examples>). Output is to standard
+out or to a file if specified with the -out flag.
 
 =cut
 
+my $cbs = CompBio::Simple->new;
 
-if ($opt{'out'}) {
-    # should probably add some safety precautions here, check uid, if file exists, etc
-    open (OUT,"> $opt{'out'}") or die "Can't open requested outfile $opt{'out'}: $!";
-    select OUT;
-}
+my %params = ();
+$params{OUTFILE} = $opt{out} if ($opt{'out'});
+$params{DEBUG} = $opt{v} if $opt{v};
 
 $| = 1; # because I am inherently impatient
 # Just bomb the code from here to TODO if not using input file. Might as well 
 # remove the $stdin stuff from above too then.
-my $F;
 my $input_file = shift; 
 
-if ($stdin) { $F = *STDIN } 
-elsif (-r $input_file) {
-    open F,$input_file or die "Can't open $input_file: $!";
-    $F = *F;
-}
-
-while(<$F>) {
-    chomp;
-    my @fields = split;
-} # while
+if ($stdin) {
+    while (<>) {
+        my $result = $cbs->fa_to_tbl($_,%params);
+        print $result if $result;
+    } # while
+} # loop over std in
+elsif ($input_file) {
+    print join("\n",@{$cbs->fa_to_tbl($input_file,%params)}),"\n";
+} # either a single sequence on the comand line or a file - let Simple handle it
+else {
+    die "No input to convert!\n";
+} # no dna?
 
 =head1 TODO
 
@@ -73,25 +76,3 @@ Please email me with any changes you make or suggestions for changes/additions. 
 perl(1).
 
 =cut
-
-
-
-my @fa = ();
-my $F = "";
-if ($argv eq "-") { $F = *STDIN }
-else {
-    open(IN,$argv) or die "Can't read file $argv: $!";
-    $F = *IN;
-}
-
-while(<$F>) {
-    if (/^>/ && $fa[1]) {
-    	print fa_to_tbl(@fa);
-	@fa = ();
-    }
-    
-    push(@fa,$_);
-    
-} # while
-
-print fa_to_tbl(@fa);

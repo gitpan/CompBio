@@ -1,5 +1,5 @@
 use strict;
-use Test::More tests => 14;
+use Test::More tests => 11;
 use warnings;
 
 # use a BEGIN block so we print our plan before MyModule is loaded
@@ -9,9 +9,9 @@ BEGIN {
 } # BEGIN
 my $DEBUG = 0;
 
-ok(-d $GENOME_HOME,"check GENOME_HOME");
-ok($DBSERVER,"DBSERVER defined?");
-ok($DBHOST,"DBHOST defined?");
+#ok(-d $GENOME_HOME,"check GENOME_HOME");
+#ok($DBSERVER,"DBSERVER defined?");
+#ok($DBHOST,"DBHOST defined?");
 
 my @na_seqs;
 while (<DATA>) {
@@ -48,26 +48,26 @@ print scalar(@seqs),"\n$seqs[6]\n" if $DEBUG;
 
 $seqs[6] .= "\toptional data 1\ttest2!";
 
-my $AR_faseqs = $cbc->tbl_to_fa(\@seqs);
+my $AR_faseqs = $cbc->tbl_to_fa(\@seqs,(DEBUG => $DEBUG));
 ok($AR_faseqs && $cbc->check_type($AR_faseqs) eq "FA","tbl_to_fa");
 print "$$AR_faseqs[6]\n" if $DEBUG;
 
-my $AR_igseqs = $cbc->tbl_to_ig(\@seqs);
+my $AR_igseqs = $cbc->tbl_to_ig(\@seqs,(DEBUG => $DEBUG));
 ok($AR_igseqs && $cbc->check_type($AR_igseqs) eq "IG","tbl_to_ig");
 print "$$AR_igseqs[6]\n" if $DEBUG;
 
-my $AR_tblseqs = $cbc->fa_to_tbl($AR_faseqs,(CLEAN => 1));
+my $AR_tblseqs = $cbc->fa_to_tbl($AR_faseqs,(CLEAN => 1,DEBUG => $DEBUG));
 ok($AR_tblseqs && $cbc->check_type($AR_tblseqs) eq "TBL","fa_to_tbl");
 print "$$AR_tblseqs[6]\n" if $DEBUG;
 
-$AR_tblseqs = $cbc->ig_to_tbl($AR_igseqs,(CLEAN => 1));
+$AR_tblseqs = $cbc->ig_to_tbl($AR_igseqs,(CLEAN => 1,DEBUG => $DEBUG));
 ok($AR_tblseqs && $cbc->check_type($AR_tblseqs) eq "TBL","ig_to_tbl");
 print "$$AR_tblseqs[6]\n" if $DEBUG;
 
-my @sixframe = split(/\n/,$cbc->six_frame(\$rawseq_w,(ID => "b0003-cdna")));
+my @sixframe = split(/\n/,$cbc->six_frame(\$rawseq_w,(ID => "b0003-cdna",DEBUG => $DEBUG)));
 ok(@sixframe && $cbc->check_type(\@sixframe) eq "TBL","six_frame");
 
-@sixframe = split(/\n/,$cbc->six_frame(\$rawseq_c,(ID => "b0007-cdna")));
+@sixframe = split(/\n/,$cbc->six_frame(\$rawseq_c,(ID => "b0007-cdna",DEBUG => $DEBUG)));
 my @sfcheck = grep /b0007-cdna_1431_1/, @sixframe;
 $sfcheck[0] =~ s/-cdna_1431_1//;
 $$AR_tblseqs[6] =~ s/\toptional.+//;

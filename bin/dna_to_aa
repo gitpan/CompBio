@@ -61,7 +61,7 @@ if($opt{'alt'}) {
 
 my $cbs = CompBio::Simple->new;
 
-my $seq = $ARGV[0];
+my $seq = $ARGV[0]; # ?!?!
 my %params = ();
 $params{SEQFIX} = 1 if $opt{s};
 $params{OUTFILE} = $opt{out} if $opt{out};
@@ -72,9 +72,6 @@ $params{RETURN_FORMAT} = "IG" if $opt{ig};
 $params{RETURN_FORMAT} = "FA" if $opt{fa};
 $params{RETURN_FORMAT} = "TBL" if $opt{tbl};
 
-
-
-my $F;
 my $input_file = shift; 
 
 if ($stdin) {

@@ -45,17 +45,19 @@ ok(@seqs == 10 && $cbs->check_type(\@seqs) eq "TBL","Simple::dna_to_aa");
 print "$na_seqs[6]\n" if $DEBUG > 1;
 print scalar(@seqs),"\n$seqs[6]\n" if $DEBUG > 1;
 
-my $AR_faseqs = $cbs->tbl_to_fa(\@seqs);
+my $AR_faseqs = $cbs->tbl_to_fa(\@seqs,(DEBUG => $DEBUG));
+print "Checking tbl_to_fa\n" if $DEBUG;
+print join("\n",@$AR_faseqs),"\n"  if $DEBUG > 1;
 ok($AR_faseqs && $cbs->check_type($AR_faseqs) eq "FA","Simple::tbl_to_fa");
 
-my $AR_igseqs = $cbs->tbl_to_ig(\@seqs);
+my $AR_igseqs = $cbs->tbl_to_ig(\@seqs,(DEBUG => $DEBUG));
 ok($AR_igseqs && $cbs->check_type($AR_igseqs) eq "IG","Simple::tbl_to_ig");
 
-my $AR_tblseqs = $cbs->fa_to_tbl($AR_faseqs,(CLEAN => 1));
+my $AR_tblseqs = $cbs->fa_to_tbl($AR_faseqs,(CLEAN => 1,DEBUG => $DEBUG));
 ok($AR_tblseqs && $cbs->check_type($AR_tblseqs) eq "TBL","Simple::fa_to_tbl");
 print "$$AR_tblseqs[6]\n" if $DEBUG;
 
-$AR_tblseqs = $cbs->ig_to_tbl($AR_igseqs,(CLEAN => 1));
+$AR_tblseqs = $cbs->ig_to_tbl($AR_igseqs,(CLEAN => 1,DEBUG => $DEBUG));
 ok($AR_tblseqs && $cbs->check_type($AR_tblseqs) eq "TBL","Simple::ig_to_tbl");
 print "$$AR_tblseqs[6]\n" if $DEBUG;
 
