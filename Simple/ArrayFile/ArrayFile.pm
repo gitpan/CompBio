@@ -199,7 +199,7 @@ when used there.
 Developed at the BioMolecular Engineering Research Center at Boston
 University under the NHLBI's Programs for Genomic Applications grant.
 
-Copyright Sean Quinlan, Trustees of Boston University 2000-2001.
+Copyright Sean Quinlan, Trustees of Boston University 2000-2002.
 
 All rights reserved. This program is free software; you can redistribute it
 and/or modify it under the same terms as Perl itself.
@@ -209,8 +209,9 @@ and/or modify it under the same terms as Perl itself.
 Sean Quinlan, seanq@darwin.bu.edu
 
 Please email me with any changes you make or suggestions for changes/additions.
-Latest version is available under ftp://mcclintock.bu.edu/BMERC/perl/.
-
+Latest version is available through SourceForge
+L<http://sourceforge.net/projects/compbio/>, or on the CPAN
+L<http://www.cpan.org/authors/id/S/SE/SEANQ/>.
 Thank you!
 
 =head1 SEE ALSO

@@ -1,0 +1,4 @@
+/usr/local/mysql/var/swissprot/Peptide
+/usr/local/mysql/var/genome/Peptide
+/usr/local/mysql/var/genbank/Peptide
+/usr/local/mysql/var/PDB/Peptide

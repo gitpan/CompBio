@@ -1,0 +1,10 @@
+DB.pm
+MANIFEST
+Makefile.PL
+test.pl
+bin/get_blast
+bin/get_org
+bin/get_def
+bin/get_seq
+bin/dbaccess
+bin/get_len

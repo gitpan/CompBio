@@ -2,25 +2,21 @@ package CompBio;
 
 require 5.005_62;
 use strict;
+use vars qw($AUTOLOAD);
 
 require Exporter;
 
 our @ISA = qw(Exporter);
 
-# these are all expected to become unecessary, default db stuff should get
-# set during install in the DB module
-#our $GENOME_HOME = "/seq/genome"; # base directory for genome databases
-#our $DBSERVER = "mysql"; # server type, as used for calling DBI::DBD driver
-#our $DBHOST = "sigler.bu.edu"; # location of server
-# default machine to do heavy work like blast and PIMA on
+our $CONF_FILE = $ENV{COMPBIO_CONF} || '/etc/CompBio.conf';
 our $CPUSERVER = $ENV{HOST};
 
 our %EXPORT_TAGS = ( 'all' => [ qw(check_type tbl_to_fa tbl_to_ig fa_to_tbl ig_to_tbl
     dna_to_aa complement six_frame aa_hash wu_blast) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
-our @EXPORT = qw($GENOME_HOME $DBSERVER $DBHOST $CPUSERVER);
+our @EXPORT = qw($CONF_FILE $CPUSERVER);
 
-our $VERSION = '0.466';
+our $VERSION = '0.469';
 our $DEBUG = 0;
 our $RET_CODE = sub {
         my $ar_ret = shift;
@@ -305,12 +301,15 @@ sub fa_to_tbl {
     	    my $test = $_;
             if ($test =~ /^\s*>(\S+)\s*(.*)/) {
                 my $sig = $1;
+                print "sig = $sig\n" if $DEBUG >= 3;
                 $rem = $2;
-                if ($test =~ s/^(\S+\|\S+) /$1\t/) {
-                    $test =~ s/>\w+\|(\d+)\|//;
-                    $sig = $1 if $1;
-                    $test =~ s/\|+/\t/g;
-                    $rem = $_;
+                if ($sig =~ s/^\w+\|([^\|\s:;.]+)(.+)/$1/) {
+                    # Since this appears to be a genbank type id portion, try
+                    # to isolate the second field, which is usually the gi#
+                    print "sig2 = $sig\n" if $DEBUG >= 3;
+                    my $temp = $2;
+                    $temp =~ s/\|+/\t/g;
+                    $rem .= " [$temp]";
                 } # turn those annoying genbank pipes into tabs
                 
                 # maybe a better keyword than CLEAN?
@@ -444,7 +443,7 @@ sub dna_to_aa {
     } # if
 
     if ($params{'C'}) { # convert all characters to thier complement
-    	$sref_seq = ${complement(\$dna)};
+    	complement(\$dna);
 #        die "Recieved C";
     } # if
     
@@ -467,7 +466,8 @@ sub dna_to_aa {
 
 Converts dna to it's complementary strand. DNA sequence is submitted as scalar
 by reference. There is no return as sequence is modified. To maintain original
-sequence, send a reference to a copy.
+sequence, send a reference to a copy (or see documentation for 
+CompBio::Simple::complement).
 
 C<complement(\$dna);>
 
@@ -484,9 +484,7 @@ sub complement {
     my @ret = ();
 
     $$sref_seq =~ tr/[ACTUGMRYKVHDBkyrmbdhv]/[TGAACkyrmbdhvMRYKVHDB]/;
-    $$sref_seq = reverse($$sref_seq);
-
-    return  $sref_seq;
+    $$sref_seq = reverse($$sref_seq); # should this uppercase before returning?
 } # complement
 
 =head2 six_frame
@@ -573,7 +571,8 @@ sub six_frame {
     my $codon = &$read_code;
     $pos += 3;
     $seq1 = $AA{$codon} || "X";
-    $cseq1 = $AA{${complement(\$codon)}} || "X";
+    complement(\$codon);
+    $cseq1 = $AA{$codon} || "X";
     my $last = $codon;
 
     my @codon;
@@ -1077,6 +1076,18 @@ my %aa_hash =
 return %aa_hash;
 } # aa_hash
 
+sub AUTOLOAD {
+    my $program = $AUTOLOAD;
+    $program =~ s/.*:://;
+    print "AUTOLOAD being used to call $program\n" if $DEBUG >= 3;
+    
+    if ($program !~ /tbl/ && $program =~ s/cdna/tbl/) {
+        no strict 'refs';
+        print "Trying conversion as $program\n" if $DEBUG >= 2;
+        return $program(@_);
+    } # method didn't exist
+} # AUTOLOAD
+
 1;
 __END__
 
@@ -1154,6 +1165,29 @@ and step up to 0.5 and push release. Finishing adding converters and fixing any
 reported bugs (new converters shouldn't add any new bugs, except inside the new
 methods) will benchmark going to 0.6.
 
+=item 0.467
+
+Minor fixes, some work on getting utils ready.
+
+=item 0.468
+
+Testing utils and started working on getting them to state. Improved fa_to_tbl
+basic genbank | parsing without using CLEAN, but still needs some work. I despair
+ever resolving this to my satisfaction, but at least now almost all the stuff not
+used is kept in the extra field allowed in the latest table file spec. .47 line
+will be working on getting the utils all working and writing tests for them. The
+test script might end up as long as the module at this rate!
+
+=item 0.469
+
+More minor fixes to CompBio. Retruned to the version of Simple.pm from the .466
+dist., as it was the last to complete all it's tests. I don't know how soon I'll
+be able to resolve those problems. But the base version of the DB module is now
+in, and overall I'm very pleased. It hasn't strayed far from the original BMERC
+module as far as purpose of methods, but the code is a lot nicer. I've also
+included the sql scripts for generating the base set of MySQL databases it's
+designed to work with, and the .MRG files I use.
+
 =back
 
 =head1 TO DO - in no particular order
@@ -1163,7 +1197,7 @@ There this becomes a seriouse memory hog. Some faster & more efficient way
 needs to be provided when dealing with files & large data sets.
 
 complement and dna_to_aa need to be loop enabled, also alowing
-&$RET_CODE(\@ret,$str); to be used.
+&$RET_CODE(\@ret,$str); to be used. Why am I using _munge_array?!?
 
 **Got it - needs work!** Get the full release of WashU Blast and make sure the
 blast stuff works with it as well.
@@ -1171,7 +1205,14 @@ blast stuff works with it as well.
 OK, rethink blast method(s) completely. Old and kludged and needs to die.
 
 Add a method for handeling ncbi blast. CompBio::Simple should only have a blast
-method that will DTRT and use the appropriate core methods.
+method that will DTRT and use the appropriate core methods. Need to revisit
+only loading modules as needed, as this method should use the XML output
+preferentially.
+
+Stop using lowercase abiguity codes after complementing! (i.e. out of %AA)
+
+If make install isn't putting right perl line in executibles, run perl config
+myself?
 
 Add DNA* and GCG format handelers
 
@@ -1214,7 +1255,7 @@ straight foward Tm calculator.
 Developed at the BioMolecular Engineering Research Center at Boston
 University under the NHLBI's Programs for Genomic Applications grant.
 
-Copyright Sean Quinlan, Trustees of Boston University 2000-2001.
+Copyright Sean Quinlan, Trustees of Boston University 2000-2002.
 
 All rights reserved. This program is free software; you can redistribute it
 and/or modify it under the same terms as Perl itself.
@@ -1226,7 +1267,7 @@ Sean Quinlan, seanq@darwin.bu.edu
 Please email me with any changes you make or suggestions for changes/additions.
 Latest version is available through SourceForge
 L<http://sourceforge.net/projects/compbio/>, or on the CPAN
-L<http://www.cpan.org/authors/id/S/SE/SEANQ/CompBio-0.461.tar.gz>.
+L<http://www.cpan.org/authors/id/S/SE/SEANQ/>.
 Thank you!
 
 I would like to thank the staff at the BMERC for being my guinee pigs for

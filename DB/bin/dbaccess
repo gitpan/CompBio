@@ -1,0 +1,563 @@
+#!/usr/local/bin/perl -w
+
+use strict;
+#use diagnostics;
+use Term::ReadLine; # check package and eval?
+use Getopt::Long;
+use BMERC::bio qw(tbl_to_fa tbl_to_ig);
+use BMERC::db(':ALL');
+
+my $VERSION = '0.4.0';
+my $stdin = ""; # '' allows - in command args to indicate input from stdin (console or pipe)
+my %opts = ();
+my $result = GetOptions(\%opts,'help|h','' => \$stdin,'f=i','c=s','delim|d=s',
+    'listfile_check|lfc=i','v+');
+
+# set defaults and/or modify for command line options
+$opts{'f'} ||= 0;
+my $delim = $opts{'delim'} || "\t";
+my $lf_check = 1;
+if (exists $opts{'listfile_check'}) { $lf_check = $opts{'listfile_check'} }
+my $FH = "";
+$opts{v} ||= 0;
+
+if ($opts{"help"}) { exec "perldoc $0" }
+
+=head1 NAME
+
+dbacess - BMERC genome database interface
+
+=head1 SYNOPSIS
+
+BMERC database interface, used as an interactive shell or with a single command.
+ dbaccess <options>
+    <-help|h> <-f n> <-c 'command'> <-delim|d 'delimiter'> <-listfile_check|lfc>
+    <->\n";
+
+=head1 DESCRIPTION
+
+
+=head1 OPTIONS:
+
+=over
+
+=item c 'command'
+
+Send 'string' as a command. String (as passed to program by shell) is executed
+excactly as if in shell. Using ' ' allows for "" enclosed list\'s inside.
+
+=item delim "delimiter"
+
+Set output field delimiter. Default is a tab.
+
+=item f integer
+
+Default field to look for id's in files suplied as list. Set to 0 initially.
+
+=item v
+
+Increase debugging vebosity. More instances of -v option increase level.
+
+=item listfile_check or lfc
+
+Set to 0 to turn off listfile check. May be necessary if working in a directory
+with id's used as filenames
+
+=item -
+
+Indicates standard in (STDIN) to be used as id list input.
+
+=item help or h
+
+This output.
+
+=back
+
+=head1 COMMANDS
+
+=over 4
+
+=item B<convert_id>
+
+Convert supplied id(s) to numeric database key, or converts
+keys to text id's.
+C<convert_id b2025>
+
+=item B<get_seq>
+
+Returns an aa sequence, default format is table. Modifiers -fa
+and -ig return the sequences in fasta or ig formats respectively.
+C<get_seq b2025>
+
+=item B<get_cdna>
+
+Returns na cdna sequence, default format is table. Modifiers -fa
+and -ig return the sequences in fasta or ig formats respectively.
+C<get_cdna b2025>
+
+Please note, cdna's are not available for all sequences.
+
+=item B<get_cds>
+
+Returns coding data for suplied id(s), if available.
+C<get_cds b2025>
+
+Return is id\tstart\tend\tstrand\ttotal intron count\tintron #\tchromosome\n".
+
+=item B<get_def>
+
+Returns annotation for supplied id(s).
+C<get_def b2025>
+
+=item B<profile_hits>
+
+Returns list of all profiles matched to id. [full*]
+C<>
+
+=item B<get_blast>
+
+Returns list of blast results from CGAn. [eq=n]
+C<>
+
+=item B<get_wd>
+
+Returns number of repeats if wd-repeat.
+C<>
+
+=item B<get_org>
+
+Returns the full name of the organism for the id(s). [nick,short]
+C<>
+
+=item B<get_taxa>
+
+Returns the kingdom for the id(s). [2,3]
+C<>
+
+=item B<delim>
+
+Set delimiter for fields, default is tab
+C<>
+
+=item B<listfile_check>
+
+Set to 0 to turn off listfile check, may be necessary if working
+in a directory with id's used as filenames
+C<>
+
+=item B<outfile>
+
+Set output filehandle for all ouput to be sent to.
+C<>
+
+=item B<logfile>
+
+Mirror all commands and errors to a file.
+C<>
+
+=item B<errorlog>
+
+Mirror errors to a file.
+C<>
+
+=item B<search_defs>
+
+Search the genome database for annotation containing a given word.
+It is planned to allow multiple words and AND,OR, & NOT qualifiers in the
+future.
+C<search_defs chloroplast>
+
+=item B<list_to_seqs>
+
+Similar to get_seq but tries to return seqs from swissprot
+and PDB id's as well.
+C<>
+
+=item B<list_to_defs>
+
+Similar to get_def but tries to return defs from swissprot
+and PDB id's as well.
+C<>
+
+=back
+
+=cut
+
+# this hash should contain the help and examples of all commands
+my %commands = (
+    convert_id => "Convert supplied id(s) to numeric database key, or converts
+    	keys to text id's.\nconvert_id b2025\n",
+    get_seq => "Returns an aa sequence, default format is table. Modifiers -fa
+    	and -ig return the sequences in fasta or ig formats respectively.\n
+	get_seq b2025",
+    get_cdna => "Returns na cdna sequence, default format is table. Modifiers -fa
+    	and -ig return the sequences in fasta or ig formats respectively.\n
+	get_cdna b2025\nPlease note, cdna's are not available for all sequences.\n",
+    get_cds => "Returns coding data for suplied id(s), if available.\n
+    	get_cds b2025\n Return is
+    	id\tstart\tend\tstrand\ttotal intron count\tintron #\tchromosome\n",
+    get_def => "Returns annotation for supplied id(s).\nget_def b2025\n",
+    profile_hits => "Returns list of all profiles matched to id. [full*]",
+    get_blast => "Returns list of blast results from CGAn. [eq=n]",
+    get_wd => "Returns number of repeats if wd-repeat.",
+    get_org => "Returns the full name of the organism for the id(s). [nick,short]",
+    get_taxa => "Returns the kingdom for the id(s). [2,3]",
+    delim => "Set delimiter for fields, default is tab",
+    listfile_check => "Set to 0 to turn off listfile check, may be necessary if working 
+    	in a directory with id's used as filenames",
+    outfile => "Set output filehandle for all ouput to be sent to",
+    logfile => "Mirror all commands and errors to a file",
+    errorlog => "Mirror errors to a file",
+    search_defs => "Search the genome database for annotation containing a given word.\n
+    	It is planned to allow multiple words and AND,OR, & NOT qualifiers in the 
+	future.\nsearch_defs <word>\n",
+    list_to_seqs => "Similar to get_seq but tries to return seqs from swissprot
+    	and PDB id's as well",
+    list_to_defs => "Similar to get_def but tries to return defs from swissprot
+    	and PDB id's as well"
+);
+
+my $dbh = &db_connect;
+
+if ($opts{'c'}) {
+    if ($stdin) {
+    	if ($opts{'f'}) { $opts{'c'} .= " -list($opts{'f'}) -" }
+	else { $opts{'c'} .= " -list -" }
+    } # if list provided by stdin pipe
+    
+    my $rc = &command($opts{'c'});
+    exit;
+} # if command line execution
+elsif (exists $opts{'c'}) {
+    warn "Sorry, looks like command line operator provided, but there
+    	is no command to process.\n";
+	exit;
+} # else if command mangled
+
+# Set paging program to more if user has none specified in ENV
+my $PAGER = (exists $ENV{PAGER} ? $ENV{PAGER} : 'more');
+# hmm, this should probably test first before blithy setting to use pager
+my $PAGING = 0;
+my $PAGE_ON = 1;
+
+# And here we can fail if 'proper' methods and lib no installed
+my $term = new Term::ReadLine 'BMERC database interface', \*STDIN, \*STDOUT;
+my $hr_rl_features = $term->Features();
+$$hr_rl_features{'autohistory'} = 0;
+
+my $prompt = "BMERC-DBI:";
+my $HOME = $ENV{HOME};
+my $LAST_ARG = "";
+
+$term->using_history();
+$term->StifleHistory(100);
+if (-e "$HOME/.dbaccess_history") {
+    open (HIST,"$HOME/.dbaccess_history") or die "Can't parse ~/.dbaccess_history: $!";
+    while (<HIST>) { chomp ; $term->AddHistory($_) }
+    close HIST or warn "HIST didn't open for reading: $!";
+}
+
+=begin text
+still haven't figured out how to get command completion to work
+
+my $attribs = $term->Attribs;
+$attribs->{rl_completion_entry_function} = $attribs->{'list_completion_function'};
+$attribs->{completion_word} = [qw(get_blast get_wd profile_hits get_seq get_cdna get_cds get_def convert_id)];
+$term->complete_internal(9);
+=end text
+=cut
+
+print <<WELCOME;
+
+BMERC database browser version $VERSION
+
+Please check command syntax at each new run, as this program is under
+heavy development, and commands may change. Some commands and 
+modifiers are not yet implimented.
+
+ Type ? or help to see a list of commands. Any command starting with SELECT
+will be sent directly to the database to be run. Also recognizes > and >> with
+a filename at the end of any command to truncate or append to file.
+
+WELCOME
+
+# And here is the main loop
+while (defined ($_ = $term->readline($prompt," ")) ) {
+    next if /^\s*$/; # Blank line - do nothing
+    my $rc = &command($_);
+    last if $rc eq "EXIT";
+} # while running
+
+exit;
+
+sub command {
+    my $in = shift;
+    
+    $FH = ""; # holds STDOUT/filehandle when swapping
+    my $outfile = "";
+    my $list = "";
+    # trim off whitespace and ending ; if present
+    $in =~ s/^\s+//;
+    $in =~ s/[\s;]+$//;
+
+    if ($in =~ /^(\\?q|quit|\\?x|bye|exit)$/) {
+    	return "EXIT";
+    } # done
+    # this should really pass appr. settings as command line options to 'maintian' state
+    elsif ($in eq "reload") { exec "perl $0" }  
+    
+    $in =~ s/\!\$/$LAST_ARG/;
+    $term->addhistory($in) if $in =~ /\S/ && $term;
+    
+    if ($in =~ s/(>{1,2})\s+(\S+)$//) {
+    	$outfile = $2;
+    	if (open(OUT,"$1 $outfile")) {
+	    $FH = select OUT;
+	    $PAGE_ON = 0;
+	}
+	else { warn "Can't open output file $outfile: $!" }
+    } # if output to file
+    
+    # maybe this shouldn't be read in advance and read as passed?
+    if ($in !~ /^SELECT/i && 
+    	($in =~ s/(-list\S*\s+)?"(.+)"/-list/ || $in =~ s/-list(\S*)?\s+"?(.+)"?/-list/)) {
+    	my $is_declared = $1;
+	$list = $2;
+	my $file_field = $opts{'f'};
+	if ($is_declared && $is_declared =~ /\((\d+)\)/) { $file_field = $1 }
+	$LAST_ARG = "\"$list\"";
+	
+    	$list = [split(" ",$list)];
+	
+    	if (@$list == 1 && $lf_check && (-s $$list[0] || $$list[0] eq "-")) {
+	    $list = &read_listfile($$list[0],$file_field);
+	}
+	elsif (@$list == 1) {
+	    warn "Only one signifier in what appeared to be a list, will try to use as id\n";
+	    $in =~ s/-list/$$list[0]/;
+	}
+    } # if list of id's provided through file
+    
+    if ($in =~ /^SELECT\s+/i) {
+	my $AR_select = $dbh->selectall_arrayref($in);
+	&startpage;
+	foreach my $AR_row (@$AR_select) { print join($delim,@$AR_row) , "\n" }
+	&endpage;
+	if ($FH =~ /STDOUT/) {
+	    select $FH;
+	    $PAGE_ON = 1;
+	}
+	return 1;
+    } # if a select statement provided
+    
+    elsif ($in =~ /^\?$|^help$/) { &shell_commands }
+        
+    elsif ($in =~ s/^delim\s+"?(.+?)"?$//) { $delim = $1 }
+    
+    elsif ($in =~ /listfile_check\s+(\d+)/) { $lf_check = $1 }
+    
+    elsif ($in =~ s/^(\w+_\w+)\s+(\S+)//) {
+    	my $call = $1;
+    	my $id = $2;
+	$LAST_ARG = $id unless $id =~ /-list/;
+	if ($lf_check && -s $id) { $list = &read_listfile($id) }
+	my ($AR_result,$mod);
+	my $fa = my $ig = my $is_key_id = 0;
+	if ($in) {
+	    if ($in =~ /-n(\s|$)/) { $is_key_id = 1 }
+	    if ($call =~ /seq|cdna/) {
+	    	if ($in =~ /-fa(\s|$)/) {$fa = 1 }
+		elsif ($in =~ /-ig(\s|$)/) { $ig = 1 }
+	    }
+	    elsif ($in =~ /-\w+/) { $mod = $in }
+	    
+	} # if modifiers, parse 'em
+	
+	{
+	no strict 'refs';
+	if ($list) {
+	    eval { $AR_result = &$call($dbh,$list,$is_key_id,$mod) };
+	    if ($@) { print "Couldn't execute command $call: $@\n";next }	    
+	} # if list
+	else {
+	    eval { $AR_result = &$call($dbh,$id,$is_key_id,$mod) };
+	    if ($@) { print "Couldn't execute command $call: $@\n";next } 
+	} # else single id
+	} # local symbolic refs allowed
+
+	&startpage;
+    	foreach my $AR_row (@$AR_result) {
+	    print ref($AR_row),"\n" if $opts{v} > 2;
+            next unless @$AR_row;
+    	    if ($fa) { print &tbl_to_fa(join("\t",@$AR_row)) }
+    	    elsif ($ig) { print &tbl_to_ig(join("\t",@$AR_row)) }
+    	    else { print join($delim,@$AR_row) , "\n" }
+    	} # return list
+	&endpage;
+
+    } # process command
+    
+    elsif ($commands{$in}) {
+    	print "$commands{$in}\n";
+    } # elsif incomplete command, give examples
+
+    else { print "Sorry, I don't understand command $in\n" }
+    
+    if ($FH =~ /STDOUT/) {
+    	select $FH;
+    	$PAGE_ON = 1;
+    } # swap output back to STDOUT
+    return 1;
+} # command
+
+sub read_listfile {
+    my $listfile = shift;
+    my $use_field = shift || 0;
+    my $F = "";
+    
+    if ($listfile eq "-") { $F = *STDIN }
+    else {
+    	unless (open (IN,$listfile)) {
+    	    warn "Can't read in list $listfile: $!";
+    	    return "next";
+	}
+	$F = *IN;
+    } # open list
+    my @list;
+    while (defined(my $line=<$F>)) {
+    	chomp $line;
+    	my @fields = split(" ",$line);
+    	$fields[$use_field] =~ s/\.tbl$|\.fa$|\.ig$//;
+    	push(@list,$fields[$use_field]) if $fields[$use_field];
+    } # while getting list 
+    return \@list;
+} # read_listfile
+
+
+sub startpage {
+    if ($PAGE_ON) {
+    	open(PAGEOUT, "| $PAGER");
+	$FH = select PAGEOUT;
+    	$PAGING = 1;
+    } # if pageing is on
+} # startpage
+
+sub endpage {
+    if ($PAGING) {
+	select $FH;
+    	close(PAGEOUT);
+    	$PAGING = 0;
+    }
+} # endpage
+
+sub shell_commands {
+    &startpage;
+print <<COMMANDS;
+
+Commands:
+  command [-list[(field)]] ("filehandle" or "list") or (text)id 
+    [-modifier( -modifier...)] [(> or >>) filehandle]
+  n modifier indicates id is numeric database key
+ * indicates commands or modifiers not yet implimented.
+   
+    convert_id -> Returns a numeric database id.
+    get_seq -> Returns an aa sequence. [fa,ig]
+    get_cdna -> Returns na cdna sequence. [fa,ig]
+    get_cds -> Returns cds data.
+    get_def -> Returns annotation. [suplimental*,submitted*,all*]
+    profile_hits -> Returns list of all profiles matched to id. [full*]
+    get_blast -> Returns list of blast results from CGAn. [eq=n]
+    get_wd* -> Returns number of repeats if wd-repeat.
+    get_org -> Returns the full name of the organism for the id(s). [nick,short]
+    get_taxa -> Returns the kingdom for the id(s). [2,3]
+    search_defs -> Searches genome annotation with a given word.
+    list_to_defs -> Similar to get_def but tries to return defs from swissprot
+    	and PDB id\'s as well
+    list_to_seqs -> Similar to get_seq but tries to return seqs from swissprot
+    	and PDB id\'s as well
+    
+Examples:
+
+Return the aa sequence for a single id:
+    get_seq b2025
+    get_seq 00099208 -n
+
+Return the coding data for a list of id\'s suplied with command:
+    get_cds "b2025 AF1012 YBR248C"
+    
+Return the anotations for a list of id\'s suplied in a file:
+    get_def id_list_filename
+    get_def -list "id_list_filename"
+    
+Return the aa sequences in fasta format for a list of id\'s suplied in a file:
+    get_seq id_list_filename -fa
+
+Return the aa sequences in ig format for a list of id\'s suplied in a tab delimited
+file, where the id\'s are contained in the third field (field count starts at 0):
+    get_seq -list(2) "id_list_filename" -ig
+    
+    
+Shell commands:
+    
+    delim -> Set delimiter for fields, default is tab
+    listfile_check -> Set to 0 to turn off listfile check, may be necessary if working in a directory with id\'s used as filenames
+    reload -> Reloads dbaccess from latest version, resetting to defaults
+    outfile* -> Set output filehandle for all ouput to be sent to
+    logfile* -> Mirror all commands and errors to a file
+    errorlog* -> Mirror errors to a file
+    
+To do:
+
+    Expand methods to optionaly utilize swissprot, PDB and profile databases as well.
+
+COMMANDS
+&endpage;
+} # shell_commands
+
+END {
+    $dbh->disconnect if $dbh;
+    if ($term) {
+    	my @a= $term->GetHistory() if $term->can('GetHistory');
+    	pop(@a) if $a[-1] =~ /^\s*(q|quit|bye|exit)\s*$/; # chop off the exit command
+    	#@a= @a[($#a-100)..($#a)] if $#a > 100 ; # may not be nec. if stifle works
+    	if (open(HIST,"> $HOME/.dbaccess_history")) {
+    	    print HIST join("\n",@a);
+    	    close HIST or warn "HIST didn't close properly: $!";
+    	}
+    } # if ReadLine  
+}
+
+=head1 TODO
+
+some comments/help may be missed if output sent to file instead of STDOUT.
+Check and correct. 
+
+Get command help and descriptions from db module at runtime - why maintain docs
+in two places?
+
+Finish POD
+
+Determine what aspects of this program are environment dep. and add handlers 
+so they can be declared at install by config script or read from env variables
+at runtime.
+
+Remove dependancy on ReadLine - that should be eval'd in and all history functions
+skipped when not present.
+
+=head1 COPYRIGHT
+
+Copyright Sean Quinlan, Trustees of Boston University 2000-2001.
+
+=head1 AUTHOR
+
+Sean Quinlan, seanq@darwin.bu.edu
+
+Please email me with any changes you make or suggestions for changes/additions. Thank you!
+
+=head1 SEE ALSO
+
+perl(1), BMERC::db.
+
+=cut
+
+__END__

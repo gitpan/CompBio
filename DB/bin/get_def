@@ -1,0 +1,164 @@
+#!/usr/local/bin/perl -w
+
+use strict;
+use BMERC::db qw(list_to_defs get_def db_connect);
+use BMERC::bio qw(tbl_to_fa tbl_to_ig);
+use Getopt::Long;
+
+my $stdio = "";
+my %opt = ();
+my $result = GetOptions(\%opt,'help|h','all|all_db','out|o=s','' => \$stdio,
+    'f=i','d=s');
+my $VERSION = '0.2.1';
+
+my $query = shift || "";
+my $delim = $opt{'d'} || "\t";
+
+unless ($query || $stdio) {
+    print "get_def (id|\"id1 id2 ..\"|listfile|-) <-all(_db)> <-o|out outfile>
+    	<-d \"split_delimiter\"> <-f field>\n";
+    exit;
+}
+
+if ($opt{"help"}) { exec "perldoc $0" }
+
+=head1 NAME
+
+get_def - Retrives sequences from the BMERC databases
+
+=head1 SYNOPSIS
+
+get_def (id|"id1 id2 .. idI<n>"|listfile|-) <-fa|-ig> <-all(_db)> <-o|out outfile>
+<-d \"split_delimiter\"> <-f field>
+
+Examples:
+
+get_def b2023
+
+get_def "b2023 b2025 CYSG_ECOLI" -all_db
+
+get_def CYSG_ECOLI -a -fa
+    # -a or -all will be interpeted as -all_db since no other options start with a
+
+get_def foo.tbl
+
+grep "  b[0-9][0-9][0-9][0-9] " bar.tab | get_def -a -f 2 -fa -
+
+=cut
+
+if ($opt{'out'}) {
+    open (OUT,"> $opt{'out'}") or die "Can't open requested outfile $opt{'out'}: $!";
+    select OUT;
+}
+
+my @query;
+my $dbh = &db_connect;
+
+if (-e $query || $stdio){
+    my $in;
+    if ($stdio) { $in = *STDIN } 
+    else {
+    	open F,$query or die "Can't open $query: $!";
+    	$in = *F;
+    }
+    
+    my $kf = $opt{'f'} || 0;
+    while (<$in>){
+    	chomp;
+    	my @fields = split(/$delim/);
+    	push(@query,$fields[$kf]);
+    }
+}
+else {
+    $query =~ s/^['"]//; # in case submision retains outside qoutes
+    $query =~ s/['"]$//;
+    @query = split(/[\s,]+/,$query);
+}
+
+my $AR_result;
+
+if ($opt{'all'}) {
+    eval { $AR_result = &list_to_defs($dbh,\@query) };
+    if ($@) { die "Couldn't execute command list_to_defs: $@\n" }
+}
+elsif (@query > 1) {
+    eval { $AR_result = &get_def($dbh,\@query) };
+    if ($@) { die "Couldn't execute command get_def: $@\n" }
+}
+elsif (@query == 1) {
+    my $id = pop @query;
+    eval { $AR_result = &get_def($dbh,$id) };
+    if ($@) { die "Couldn't execute command get_def: $@\n" }
+}
+else { die "Something went wrong parsing $query, sorry: $!" } 
+
+foreach my $AR_row (@$AR_result) {
+    next unless @$AR_row;
+    print join("\t",@$AR_row) , "\n";
+} # return list
+
+END {
+    if ($dbh) { $dbh->disconnect }
+}
+
+=head1 DESCRIPTION
+
+Currently retrieves sequences from the genome database by default. Can also
+usually find sequences by swissprot name, PDB id or genbank PID with the
+-all_db (-all|-a) flag.
+
+Requires that BMERC::db::db_connect is able to connect to the BMERC database.
+
+=head1 OPTIONS
+
+=over
+
+=item f field
+
+Use specified field (0 count) from input for id's
+
+=item d 'delimiter'
+
+Perl regex to use in splitting fields
+
+=item -
+
+Use STDIN for id's. This is usefull for piping data from another command into
+get_def. It can also be used to enter id's from the keyboard, one per line, CTRL-D
+when done.
+
+=item all_db|all
+
+Search standard database set for sequences. See BMERC::db::list_to_seqs for details
+on which databases are currently searched. Default is to get sequences only from
+the genome database.
+
+=item out|o
+
+Filename to send output to. * Supplied for those who have issues with using > ;-} *
+
+=item help|h
+
+This output.
+
+=back
+
+=head1 COPYRIGHT
+
+Copyright Sean Quinlan, Trustees of Boston University 2000-2001.
+
+All rights reserved. This program is free software; you can redistribute it
+and/or modify it under the same terms as Perl itself.
+
+=head1 AUTHOR
+
+Sean Quinlan, seanq@darwin.bu.edu
+
+Please email me with any changes you make or suggestions for changes/additions.
+Thank you!
+
+=head1 SEE ALSO
+
+perl(1), BMERC::db (3), BMERC::bio (3)
+
+=cut

@@ -7,7 +7,7 @@ BEGIN {
     $| = 1;
 } # BEGIN
 
-my $DEBUG = 0; # should get this from command line/make somehow
+my $DEBUG = 2; # should get this from command line/make somehow
 
 # need to add t ests for _munge methods!!
 

@@ -59,14 +59,14 @@ if($opt{'alt'}) {
     &alt_coding(\%aa);
 } # if alt
 
-my $cbs = CompBio::Simple->new;
+my %params = ();
+$params{DEBUG} = $opt{v} if $opt{v};
+my $cbs = CompBio::Simple->new(%params);
 
 my $seq = $ARGV[0]; # ?!?!
-my %params = ();
 $params{SEQFIX} = 1 if $opt{s};
 $params{OUTFILE} = $opt{out} if $opt{out};
 $params{C} = 1 if $opt{c};
-$params{DEBUG} = $opt{v} if $opt{v};
 $params{ALTCODE} = \%aa if (keys %aa);
 $params{RETURN_FORMAT} = "IG" if $opt{ig};
 $params{RETURN_FORMAT} = "FA" if $opt{fa};
@@ -80,12 +80,18 @@ if ($stdin) {
         print $result if $result;
     } # while
 } # loop over std in
-elsif ($input_file) {
+elsif (-s $input_file) {
     print join("\n",@{$cbs->dna_to_aa($input_file,%params)}),"\n";
-} # either a single sequence on the comand line or a file - let Simple handle it
+} # a file - let Simple handle it
+elsif ($input_file) {
+    my $result = $cbs->dna_to_aa($input_file,%params);
+    print $result if $result;
+} # a single sequence on the comand line
 else {
     die "No dna provided to translate!\n";
 } # no dna?
+
+exit;
 
 sub alt_coding {
     my $href = shift;
@@ -198,7 +204,7 @@ Developed at the BioMolecular Engineering Research Center
 (http://bmerc-www.bu.edu/) at Boston University (http://www.bu.edu/)
 under the NHLBI's Programs for Genomic Applications grant.
 
-Copyright Sean Quinlan, Trustees of Boston University 2000-2001.
+Copyright Sean Quinlan, Trustees of Boston University 2000-2002.
 
 All rights reserved. This program is free software; you can redistribute it
 and/or modify it under the same terms as Perl itself.

@@ -69,6 +69,7 @@ ok(@sixframe && $cbc->check_type(\@sixframe) eq "TBL","six_frame");
 
 @sixframe = split(/\n/,$cbc->six_frame(\$rawseq_c,(ID => "b0007-cdna",DEBUG => $DEBUG)));
 my @sfcheck = grep /b0007-cdna_1431_1/, @sixframe;
+die unless @sfcheck;
 $sfcheck[0] =~ s/-cdna_1431_1//;
 $$AR_tblseqs[6] =~ s/\toptional.+//;
 ok(@sfcheck == 1 && $sfcheck[0] eq $$AR_tblseqs[6],"six_frame complement check");

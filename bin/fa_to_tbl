@@ -33,11 +33,11 @@ out or to a file if specified with the -out flag.
 
 =cut
 
-my $cbs = CompBio::Simple->new;
-
 my %params = ();
 $params{OUTFILE} = $opt{out} if ($opt{'out'});
 $params{DEBUG} = $opt{v} if $opt{v};
+
+my $cbs = CompBio::Simple->new(%params);
 
 $| = 1; # because I am inherently impatient
 # Just bomb the code from here to TODO if not using input file. Might as well 
@@ -63,13 +63,23 @@ else {
 
 =head1 COPYRIGHT
 
-Copyright Sean Quinlan, Trustees of Boston University 2001.
+Developed at the BioMolecular Engineering Research Center at Boston
+University under the NHLBI's Programs for Genomic Applications grant.
+
+Copyright Sean Quinlan, Trustees of Boston University 2000-2002.
+
+All rights reserved. This program is free software; you can redistribute it
+and/or modify it under the same terms as Perl itself.
 
 =head1 AUTHOR
 
 Sean Quinlan, seanq@darwin.bu.edu
 
-Please email me with any changes you make or suggestions for changes/additions. Thank you!
+Please email me with any changes you make or suggestions for changes/additions.
+Latest version is available through SourceForge
+L<http://sourceforge.net/projects/compbio/>, or on the CPAN
+L<http://www.cpan.org/authors/id/S/SE/SEANQ/>.
+Thank you!
 
 =head1 SEE ALSO
 
