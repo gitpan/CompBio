@@ -1,13 +1,13 @@
 
 
 
-User Contributed Perl Documentation           CompBio::CompBio(3)
+User Contributed Perl Documentation                    CompBio(3)
 
 
 
 NNNNAAAAMMMMEEEE
-     CompBio - Core methods library for some basic stuff useful
-     in bioinformatics.
+     CompBio - Core library for some basic methods useful in
+     computational biology/bioinformatics.
 
 SSSSYYYYNNNNOOOOPPPPSSSSIIIISSSS
      use CompBio;
@@ -60,14 +60,14 @@ DDDDEEEESSSSCCCCRRRRIIIIPPPPTTTTIIIIOOOONNNN
 
 
 
-2001-08-16          Last change: perl v5.6.0                    1
+2001-09-11          Last change: perl v5.6.0                    1
 
 
 
 
 
 
-User Contributed Perl Documentation           CompBio::CompBio(3)
+User Contributed Perl Documentation                    CompBio(3)
 
 
 
@@ -90,16 +90,15 @@ User Contributed Perl Documentation           CompBio::CompBio(3)
      functional value.
 
 MMMMeeeetttthhhhooooddddssss
-     A couple of important general notes. All methods will
-     describe the key required arguments and will also indicate
-     which arg is the optional %params hash. %params can be
-     passed as a hash or hash reference. Also, most arguments
-     that handle sequences or ids accept input as scalar, arrays
-     (by reference) or hashes (by reference).  If I miss
-     documenting it, try it just in case. Unless a parameter
-     option is available to signify otherwise, I assume 'doing
-     the right thing' is to return the same type of data
-     construct as recieved.
+     You may note that the majority of the methods here are for
+     converting sequences from one format to another. Mainly this
+     is for converting other formats to table format, which is
+     used by most of these programs. This is not meant to be a
+     comprhensive collection of format guessing and
+     transformation methods. If you are looking for a converter
+     for a format CompBio doesn't handle, I suggest you look into
+     bioperls SeqIO package or the READSEQ program (java), found
+     at http://iubio.bio.indiana.edu/soft/molbio/readseq/
 
      nnnneeeewwww
 
@@ -122,23 +121,21 @@ MMMMeeeetttthhhhooooddddssss
 
      `$type = check_type(\@seqs,%parameters);'
 
-
-
-
-
-2001-08-16          Last change: perl v5.6.0                    2
-
-
-
-
-
-
-User Contributed Perl Documentation           CompBio::CompBio(3)
-
-
-
      Possible return types are CDNA, TBL, FA, IG, RAW and
      UNKNOWN.
+
+
+
+2001-09-11          Last change: perl v5.6.0                    2
+
+
+
+
+
+
+User Contributed Perl Documentation                    CompBio(3)
+
+
 
      Be warned, this is intended only as a quick check and only
      uses as many records as necisarry in the reference provided,
@@ -189,23 +186,23 @@ User Contributed Perl Documentation           CompBio::CompBio(3)
 
      Converts a dna sequence, containing no whitespace, submited
      as a scalar reference, to the amino acid residues as coded
-
-
-
-2001-08-16          Last change: perl v5.6.0                    3
-
-
-
-
-
-
-User Contributed Perl Documentation           CompBio::CompBio(3)
-
-
-
      by the standard 'universal' genetic code.  Return is a
      reference to a scalar. dna sequence may contain standard
      special characters (i.e. R,S,B,N, ect.). Default behavior is
+
+
+
+2001-09-11          Last change: perl v5.6.0                    3
+
+
+
+
+
+
+User Contributed Perl Documentation                    CompBio(3)
+
+
+
      to trim a final stop, if present, and to substitute an M for
      an I or L in the first position - this is usually correct
      when translating whole sequences from a coding DNA sequence.
@@ -258,14 +255,17 @@ User Contributed Perl Documentation           CompBio::CompBio(3)
 
 
 
-2001-08-16          Last change: perl v5.6.0                    4
+
+
+
+2001-09-11          Last change: perl v5.6.0                    4
 
 
 
 
 
 
-User Contributed Perl Documentation           CompBio::CompBio(3)
+User Contributed Perl Documentation                    CompBio(3)
 
 
 
@@ -307,10 +307,13 @@ HHHHIIIISSSSTTTTOOOORRRRYYYY
                -AXC -n CompBio
 
 
-     0.74    Copy over functions from original BMERC::bio, making
-             improvements to code, mostly by removing lingering
-             locale assumptions and (hopefully) improving
-             interface, and converting to OOP.
+     0.44    Copy over most functions from original BMERC::bio
+             (ver 0.74), making improvements to code, mostly by
+             removing lingering locale assumptions and
+             (hopefully) improving interface, and adding OOP
+             useability .
+
+     0.45    Modifications to Simple primarilly
 
 TTTTOOOO DDDDOOOO - iiiinnnn nnnnoooo ppppaaaarrrrttttiiiiccccuuuullllaaaarrrr oooorrrrddddeeeerrrr
      I like the basic design so far - except where large sequence
@@ -318,22 +321,22 @@ TTTTOOOO DDDDOOOO - iiiinnnn nnnnoooo ppppaaaarr
      hog. Some faster & more efficient way needs to be provided
      when dealing with files & large data sets.
 
+
+
+
+2001-09-11          Last change: perl v5.6.0                    5
+
+
+
+
+
+
+User Contributed Perl Documentation                    CompBio(3)
+
+
+
      **Got it - needs work!** Get the full release of WashU Blast
      and make sure the blast stuff works with it as well.
-
-
-
-
-2001-08-16          Last change: perl v5.6.0                    5
-
-
-
-
-
-
-User Contributed Perl Documentation           CompBio::CompBio(3)
-
-
 
      OK, rethink blast _m_e_t_h_o_d(s) completely. Old and kludged and
      needs to die.
@@ -372,8 +375,32 @@ User Contributed Perl Documentation           CompBio::CompBio(3)
      be far more desirable than _having_ to use a bunch of
      modules all in the CompBio namespace.
 
+     fasta and ig to tbl methods should place extra data in
+     optional fields in new table specs
+
+     tbl_to_ig needs to check for extra fields in new table
+     format and place fields in ig's optional comment lines.
+
+     _error (all packages) needs to correctly report line where
+     error occured.  Can this be done through caller or do I need
+     to pass manually?
+
 CCCCOOOOPPPPYYYYRRRRIIIIGGGGHHHHTTTT
      Copyright Sean Quinlan, Trustees of Boston University
+
+
+
+2001-09-11          Last change: perl v5.6.0                    6
+
+
+
+
+
+
+User Contributed Perl Documentation                    CompBio(3)
+
+
+
      2000-2001.
 
      All rights reserved. This program is free software; you can
@@ -386,20 +413,6 @@ AAAAUUUUTTTTHHHHOOOORRRR
      Please email me with any changes you make or suggestions for
      changes/additions.  Latest version is available under
      ftp://mcclintock.bu.edu/BMERC/perl/. Thank you!
-
-
-
-
-2001-08-16          Last change: perl v5.6.0                    6
-
-
-
-
-
-
-User Contributed Perl Documentation           CompBio::CompBio(3)
-
-
 
 SSSSEEEEEEEE AAAALLLLSSSSOOOO
      _p_e_r_l(1), CompBio::Simple, CompBio::DB.
@@ -443,20 +456,7 @@ SSSSEEEEEEEE AAAALLLLSSSSOOOO
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-2001-08-16          Last change: perl v5.6.0                    7
+2001-09-11          Last change: perl v5.6.0                    7
 
 
 

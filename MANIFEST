@@ -2,6 +2,9 @@ CompBio.pm
 INSTALL
 MANIFEST
 README
+Simple/ArrayFile/ArrayFile.pm
+Simple/ArrayFile/MANIFEST
+Simple/ArrayFile/test.pl
 Simple/MANIFEST
 Simple/README
 Simple/Simple.pm

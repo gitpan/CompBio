@@ -1,7 +1,7 @@
 
 
 
-User Contributed Perl Documentation    CompBio::Simple::Simple(3)
+User Contributed Perl Documentation                     Simple(3)
 
 
 
@@ -60,14 +60,14 @@ MMMMeeeetttthhhhooooddddssss
 
 
 
-2001-08-16          Last change: perl v5.6.0                    1
+2001-09-11          Last change: perl v5.6.0                    1
 
 
 
 
 
 
-User Contributed Perl Documentation    CompBio::Simple::Simple(3)
+User Contributed Perl Documentation                     Simple(3)
 
 
 
@@ -92,10 +92,16 @@ HHHHIIIISSSSTTTTOOOORRRRYYYY
                -AXC -n CompBio::Simple
 
 
-     0.74    Copy over functions from original BMERC::bio, making
-             small improvements to code, mostly by removing
-             lingering locale assumptions and (hopefully)
-             improving interface, and converting to OOP.
+     0.42    Got initial set of methods linking to CompBio in.
+             Developed the _munge stuff.
+
+     0.43    Brought tests up to same point as in CompBio. Added
+             six_frame. Moved the data handeling for
+             dna_to_protein to own _munge type internal method.
+             Added RETURN_TYPE parameter to _munge input so user
+             can pick. Created the CompBio::Simple::ArrayFile
+             module to TIE a sequence file to an array. Added
+             six_frame using same _munge as dna_to_protein.
 
 TTTTOOOO DDDDOOOO
      _munge_seq_imput needs to also detect when it just has a
@@ -116,26 +122,26 @@ CCCCOOOOPPPPYYYYRRRRIIIIGGGGHHHHTTTT
 AAAAUUUUTTTTHHHHOOOORRRR
      Sean Quinlan, seanq@darwin.bu.edu
 
+
+
+
+
+2001-09-11          Last change: perl v5.6.0                    2
+
+
+
+
+
+
+User Contributed Perl Documentation                     Simple(3)
+
+
+
      Please email me with any changes you make or suggestions for
      changes/additions.  Latest version is available under
      ftp://mcclintock.bu.edu/BMERC/perl/.
 
      Thank you!
-
-
-
-
-
-2001-08-16          Last change: perl v5.6.0                    2
-
-
-
-
-
-
-User Contributed Perl Documentation    CompBio::Simple::Simple(3)
-
-
 
 SSSSEEEEEEEE AAAALLLLSSSSOOOO
      _p_e_r_l(1), _C_o_m_p_B_i_o(3).
@@ -186,13 +192,7 @@ SSSSEEEEEEEE AAAALLLLSSSSOOOO
 
 
 
-
-
-
-
-
-
-2001-08-16          Last change: perl v5.6.0                    3
+2001-09-11          Last change: perl v5.6.0                    3
 
 
 

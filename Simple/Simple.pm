@@ -5,14 +5,15 @@ use strict;
 use warnings;
 use Carp qw(cluck confess croak carp);
 use CompBio;
+use CompBio::Simple::ArrayFile;
 
 our @ISA = qw(Exporter);
 use vars qw($AUTOLOAD);
 
-our $VERSION = '0.42';
+our $VERSION = '0.43';
 our $DEBUG = 0;
 
-our %Auto_array = (
+our %Auto_method = (
     check_type => 1,
     tbl_to_fa => 1,
     tbl_to_ig => 1,
@@ -105,14 +106,97 @@ and only the sequence as the value.
 # man this error checking shit is a pain! :P
 # get the rest of the methods docs from CompBio.pm
 sub six_frame {
+    my ($self,$AR_seqs,$return_type,%params) = _munge_seq_input(@_);
+        
+    local $DEBUG = exists $params{DEBUG} ? $params{DEBUG} : $DEBUG;
+    if ($DEBUG >= 3) { foreach my $k (keys %$self) { print "$k\t$$self{$k}\n" } }
+    print ref($AR_seqs),"<- ref?\n" if $DEBUG >= 2;
+    if ($DEBUG >= 2) { foreach my $k (keys %params) { print "$k\t$params{$k}\n" } }
+    
+    my $AR_ret = _munge_array_to_scalar('six_frame',$self,$AR_seqs,%params);
+    return _munge_seq_return($AR_ret,$return_type,%params);
 } # six_frame
 
 sub complement {
 } # complement
 
+# why aren't I checking format type and converting as necisary?!?
+# simple should DTRT here! Think about data storage situations where
+# converting to array will ruin type formating - and data. And where
+# check_type will fail on sequence format incorrect. This should end
+# being part of sanity shecking as well. Make sure I structure to fall
+# as fast as possible.
+
 sub dna_to_protein {
+    my ($self,$AR_seqs,$return_type,%params) = _munge_seq_input(@_);
+    
+    local $DEBUG = exists $params{DEBUG} ? $params{DEBUG} : $DEBUG;
+    if ($DEBUG >= 3) { foreach my $k (keys %$self) { print "$k\t$$self{$k}\n" } }
+    print ref($AR_seqs),"<- ref?\n" if $DEBUG >= 2;
+    if ($DEBUG >= 2) { foreach my $k (keys %params) { print "$k\t$params{$k}\n" } }
+    
+    my $AR_ret = _munge_array_to_scalar('dna_to_protein',$self,$AR_seqs,%params);
+    return _munge_seq_return($AR_ret,$return_type,%params);
 } # dna_to_protein
 
+sub _munge_array_to_scalar {
+    my $caller = shift; # can I get this from caller or such?
+    my $self = shift;
+    my $AR_seqs = shift;
+    my %params = @_ ? @_ : ();
+    
+    my $guess = $$self{cbc}->check_type($AR_seqs,%params);
+    my $AR_ret = [];
+    print "check_type returned $guess\n" if $DEBUG >= 2;
+    if ($DEBUG >= 2) { print "seqcount in AR_seqs = ",scalar(@$AR_seqs),"\n" }
+    
+    if ($guess eq "RAW") {
+        foreach my $dna (@$AR_seqs) {
+            print "$dna\n" if ($DEBUG >= 2);
+            my $result = $$self{cbc}->$caller(\$dna,%params);
+            if (ref $result) { push(@$AR_ret,$$result) }
+            else { push(@$AR_ret,$result) }
+        } # easier to loop over one than add more tests or disallow mult. raw seqs
+    } # no id's or fields to parse
+    elsif ($guess eq "CDNA") {
+        foreach my $seq (@$AR_seqs) {
+            print "seq from AR_seqs:\n$seq<-\n" if ($DEBUG >= 2);
+            my ($id,$dna) = split(/\s+/,$seq);
+            print "Translating $dna\n" if ($DEBUG >= 2);
+            my $result = $$self{cbc}->$caller(\$dna,%params);
+            my $ret = "$id\t";
+            if (ref $result) { $ret .= $$result }
+            else { $ret .= $result }
+            print "recieved $ret from $caller\n" if ($DEBUG >= 2);
+            push(@$AR_ret,$ret);
+        } # foreach
+    } # translate cdna's
+    # can't I compress these next two?
+    elsif ($guess eq "FA") {
+        $AR_seqs = $$self{cbc}->fa_to_tbl($AR_seqs,%params);
+        foreach my $seq (@$AR_seqs) {
+            my ($id,$dna) = split($seq);
+            my $ret = $id . ${$$self{cbc}->$caller(\$dna,%params)};
+            push(@$AR_ret,$ret);
+        } # foreach
+        $AR_ret = $$self{cbc}->tbl_to_fa($AR_ret,%params);
+    } # convert fa and then to aa
+    elsif ($guess eq "IG") {
+        $AR_seqs = $$self{cbc}->ig_to_tbl($AR_seqs,%params);
+        foreach my $seq (@$AR_seqs) {
+            my ($id,$dna) = split($seq);
+            my $ret = $id . ${$$self{cbc}->$caller(\$dna,%params)};
+            push(@$AR_ret,$ret);
+        } # foreach
+        $AR_ret = $$self{cbc}->tbl_to_ig($AR_ret,%params);
+    } # convert fa and then to aa
+    else { _error("Can't determine how to try to handle $guess in this context\n") }
+
+    return $AR_ret;
+} # really need a better name for this!
+
+# allow for optional param FORMAT to declare format type for munging
+# return_type should be declarable in params?
 sub _munge_seq_input {
     my $self = shift;
     my $seq = (ref($self) && ref($self) !~ /ARRAY|HASH|SCALAR/) ? shift : $self;
@@ -143,28 +227,47 @@ sub _munge_seq_input {
         foreach my $k (keys %$seq) { push(@$AR_seqs,join("\t",($k,$$seq{$k}))) }
         $return_type = "HASH";
     } # if hash submitted
-    elsif ($ref eq "SCALAR") {
-        $AR_seqs = [split(/\n/,$$seq)];
-        $return_type = "REFSCALAR";
-    } # if scalar reference submitted (!?)
-    elsif ($seq =~ /^.+[\t ][A-Z\.\*\!]+$/) {
-        $AR_seqs = [(split(/\n/,$seq))];
-        $return_type = "SCALAR";
-    } # elsif first line looks like scalar sequences in table format
+    elsif (! $ref || $ref eq "SCALAR") {
+        my $new_ref = "";
+        my @tmparray = ();
+        
+        if (-s $seq) {
+            unless (open(DAT,$seq)) {
+                _error("Can't read table file $seq: $!");
+                return;
+            } # can't open DAT
+            # 6 lines @ 80 char/line or enough of a tbl, raw or cdna seq to be fairly sure
+            read(DAT,$tmparray[0],480);
+            my $guess = $$self{cbc}->check_type(\@tmparray,%params);
+            if ($guess eq "UNKNOWN") { _error("Can't determine sequence format") }
+            else {
+                tie @$AR_seqs,"CompBio::Simple::ArrayFile",$guess;
+            } # tie array to file
+            $return_type = "ARRAY";
+        } # we have a file to read
+        # maybe I should tie array differently and not copy whole 
+        # data set split into array?
+        else {
+            $new_ref = $ref ? $seq : \$seq;
+            $return_type = $ref ? "REFSCALAR" : "SCALAR";
+            $tmparray[0] = join("\n",split(/\n/,$$new_ref,6));
+            my $guess = $$self{cbc}->check_type(\@tmparray,%params);
+            $params{FORMAT} = $guess;
+            if ($guess =~ /TBL|RAW|CDNA/) {
+                $AR_seqs = [(split(/\n/,$$new_ref))];
+            } # doesn't matter which, they are all single 'line' records
+            elsif ($guess eq "FA") {
+                $AR_seqs = [(split(/\n?(?=>)/,$$new_ref))];
+                $$AR_seqs[-1] =~ s/\s+$//; # for some reason chomp($$AR_seqs[-1]) didn't work?
+            } # split appropriate to fasta
+            elsif ($guess eq "IG") {
+                $AR_seqs = [(split(/\n?(?<=1\n)(?=;)/,$$new_ref))];
+                $$AR_seqs[-1] =~ s/\s+$//; # for some reason chomp($$AR_seqs[-1]) didn't work?
+            } # split appropriate to ig
+            else { _error("Got $guess as format type for sequence(s)\n") }
+        } # else examine the scalar and populate ar_seqs
+    } # not 
     elsif ($ref) { _error("Got an unusable reference ->$ref\n") }
-    elsif (-s $seq) {
-        unless (open(TBL,$seq)) {
-            _error("Can't read table file $seq: $!");
-            return;
-        } # can't open TBL
-        while (<TBL>) {
-            chomp;
-            my @fields = split; # in case some used spaces instead of tab
-            push(@$AR_seqs,join("\t",@fields[0,1]));
-        } # while
-        close TBL or _error("TBL didn't close\n");
-        $return_type = "ARRAY"; # since this gives no indication of preference
-    } # eslif $seq appears to be a filename
     else {
         _error("Can't determine how to handle $seq\n");
         return;
@@ -179,13 +282,21 @@ sub _munge_seq_input {
         $params{'FH'} = *OUT;
     } # output to file requested
     
-    return($self,$AR_seqs,$return_type,(each %params));
+    $return_type = $params{RETURN_TYPE} || $return_type;
+    
+    return($self,$AR_seqs,$return_type,%params);
 } # _munge_seq_input
 
 sub _munge_seq_return {
     my $AR_seqs = shift;
     my $return_type = shift;
+    
     my %params = @_ ? @_ : ();
+    local $DEBUG = exists $params{DEBUG} ? $params{DEBUG} : $DEBUG;
+    my $items = ref($AR_seqs) ? scalar(@$AR_seqs) : 1;
+
+    print "_munge_seq_return recieved $items entries for return type $return_type\n" if $DEBUG;
+    if ($DEBUG >= 2) { foreach my $k (keys %params) { print "$k\t$params{$k}\n" } }  
     
     return $AR_seqs unless (ref($AR_seqs) && $return_type ne "ARRAY");
     
@@ -224,7 +335,7 @@ sub AUTOLOAD {
     $program =~ s/.*:://;
     print "AUTOLOAD being used to call $program\n" if $DEBUG >= 3;
 
-    if ($Auto_array{$program}) {
+    if ($Auto_method{$program}) {
         # first, because this is Simple, we'll make it handle seq data input
         my ($self,$AR_seqs,$return_type,%params) = _munge_seq_input(@_);
         my $AR_ret = $$self{cbc}->$program($AR_seqs,%params);
@@ -267,9 +378,14 @@ Original version; created by h2xs 1.20 with options
 
 =item 0.42
 
-Copy over functions from original BMERC::bio, making small improvements to code,
-mostly by removing lingering locale assumptions and (hopefully) improving
-interface, and converting to OOP.
+Got initial set of methods linking to CompBio in. Developed the _munge stuff.
+
+=item 0.43
+
+Brought tests up to same point as in CompBio. Added six_frame. Moved the data handeling
+for dna_to_protein to own _munge type internal method. Added RETURN_TYPE parameter to
+_munge input so user can pick. Created the CompBio::Simple::ArrayFile module to TIE
+a sequence file to an array. Added six_frame using same _munge as dna_to_protein.
 
 =back
 

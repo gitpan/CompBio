@@ -1,7 +1,6 @@
 use strict;
 use Test::More tests => 14;
 
-our $loaded = "";
 # use a BEGIN block so we print our plan before MyModule is loaded
 BEGIN {
     use_ok('CompBio');

@@ -19,7 +19,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw(check_type tbl_to_fa tbl_to_ig fa_to_tbl ig_t
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT = qw($GENOME_HOME $DBSERVER $DBHOST $CPUSERVER);
 
-our $VERSION = '0.44';
+our $VERSION = '0.45';
 our $DEBUG = 0;
 
 =head1 NAME
@@ -84,13 +84,14 @@ package, this module will have no functional value.
 
 =head1 Methods
 
-A couple of important general notes. All methods will describe the key required
-arguments and will also indicate which arg is the optional %params hash. %params
-can be passed as a hash or hash reference. Also, most arguments that handle sequences
-or ids accept input as scalar, arrays (by reference) or hashes (by reference).
-If I miss documenting it, try it just in case. Unless a parameter option is
-available to signify otherwise, I assume 'doing the right thing' is to return the
-same type of data construct as recieved.
+You may note that the majority of the methods here are for converting
+sequences from one format to another. Mainly this is for converting other
+formats to table format, which is used by most of these programs. This is
+not meant to be a comprhensive collection of format guessing and
+transformation methods. If you are looking for a converter for a format
+CompBio doesn't handle, I suggest you look into bioperls SeqIO package or
+the READSEQ program (java), found at
+http://iubio.bio.indiana.edu/soft/molbio/readseq/
 
 =head2 new
 
@@ -152,11 +153,12 @@ sub check_type {
     local $DEBUG = exists $params{DEBUG} ? $params{DEBUG} : $DEBUG;
     print "Checking type for:\n",join("\n",@$seq[0..2]),"\n" if $DEBUG >= 3;
     
-    if ($$seq[0] =~ /^.+?\t[CTUAGctuag]+$/) { return "CDNA" }
-    elsif ($$seq[0] =~ /^.+?\t[A-Za-z!\.\*]+$/) { return "TBL" }
-    elsif ($$seq[0] =~ /^>.+\n[A-Za-z!\.\*]+[\.\*]?$/m) { return "FA" }
-    elsif ($$seq[0] =~ /^;\s*\n;\s*\n;\s*\n.+?\n[A-Za-z!\.\*]+1?S/) { return "IG" }
-    elsif ($$seq[0] =~ /^[CTUAGMRWSYKVHDBXNctuagmrwsykvhdbxn]+\*?\n?$/) { return "RAW" }
+    # TBL should only accept aa codes
+    if ($$seq[0] =~ /^.+?\t[CTUAGctuag]+\*?(\t|$)/) { return "CDNA" }
+    elsif ($$seq[0] =~ /^.+?\t[A-Za-z!\.]+\*?(\t|$)/) { return "TBL" }
+    elsif ($$seq[0] =~ /^>.+\n[A-Za-z!\.]+\*?$/m) { return "FA" }
+    elsif ($$seq[0] =~ /^[;.*\n]+\S+\n[A-Za-z!\.\*]+1?$/m) { return "IG" }
+    elsif ($$seq[0] =~ /^[CTUAGMRWSYKVHDBXNctuagmrwsykvhdbxn]+\*?$/m) { return "RAW" }
     else { return "UNKNOWN" }
 } # check_type
 
@@ -216,7 +218,7 @@ sub tbl_to_ig {
     foreach (@$aref_seqs) {
         chomp;
         my @fields = split(/\t/);
-        my $str = ";\n;\n;\n$fields[0]\n"; # seperators, comment & id lines
+        my $str = ";\n;\n$fields[0]\n"; # seperators, comment & id lines
         $fields[1] .= "1";
         my $tmpl = "a79" x ((length($fields[1])/79) + 1);
         $str .= join("\n",(unpack($tmpl,$fields[1])));
@@ -375,6 +377,7 @@ sub dna_to_protein {
 
     if ($params{'C'}) { # convert all characters to thier compliment
     	$sref_seq = complement($sref_seq);
+#        die "Recieved C";
     } # if
     
     my $ret = "";
@@ -517,7 +520,7 @@ sub six_frame {
     if ($out && $params{'OUTFILE'}) { print $fh_out $out }
     else { $ret .= $out }
     
-    return $ret || 0;
+    return $ret || 0; # this should really return a reference!
 } # six_frame
 
 # stop is used by six frame when a stop '.' is encountered to calculate the
@@ -968,9 +971,13 @@ Original version; created by h2xs 1.20 with options
 
 =item 0.44
 
-Copy over functions from original BMERC::bio (ver 0.74), making improvements to code,
+Copy over most functions from original BMERC::bio (ver 0.74), making improvements to code,
 mostly by removing lingering locale assumptions and (hopefully) improving
-interface, and converting to OOP.
+interface, and adding OOP useability .
+
+=item 0.45
+
+Modifications to Simple primarilly
 
 =back
 
@@ -1014,6 +1021,15 @@ requested export (like use CompBio qw(Simple DB)? Or through an AUTOLOAD
 type interface, returning the correct object ($cbs = CompBio->Simple("new")
 or some such)? I think that would be far more desirable than _having_ to
 use a bunch of modules all in the CompBio namespace.
+
+fasta and ig to tbl methods should place extra data in optional fields in new
+table specs
+
+tbl_to_ig needs to check for extra fields in new table format and place fields
+in ig's optional comment lines.
+
+_error (all packages) needs to correctly report line where error occured.
+Can this be done through caller or do I need to pass manually?
 
 =head1 COPYRIGHT
 
