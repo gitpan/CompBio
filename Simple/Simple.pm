@@ -58,6 +58,10 @@ If I miss documenting it, try it just in case. Unless a parameter option is
 available to signify otherwise, I assume 'doing the right thing' is to return the
 same type of data construct as recieved.
 
+Sorry, not all of the methods available trough Simple.pm have been documented.
+See CompBio.pm for details on the basic usage and purpose of the methods. I'm
+planning on finishing up the docs to the current state for 0.46.
+
 =head2 new
 
 Construct an object for invoking methods in CompBio::Simple.

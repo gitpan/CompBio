@@ -19,7 +19,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw(check_type tbl_to_fa tbl_to_ig fa_to_tbl ig_t
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT = qw($GENOME_HOME $DBSERVER $DBHOST $CPUSERVER);
 
-our $VERSION = '0.45';
+our $VERSION = '0.451';
 our $DEBUG = 0;
 
 =head1 NAME
@@ -978,6 +978,12 @@ interface, and adding OOP useability .
 =item 0.45
 
 Modifications to Simple primarilly
+
+=item 0.451
+
+Fixed faulty statement in MANIFEST.SKIP that excluded Makefile.PL from
+distribution (thanks to Andreas Riechert for pointing this out to me almost
+imediately).
 
 =back
 

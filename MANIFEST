@@ -1,11 +1,14 @@
 CompBio.pm
 INSTALL
 MANIFEST
+Makefile.PL
 README
 Simple/ArrayFile/ArrayFile.pm
 Simple/ArrayFile/MANIFEST
+Simple/ArrayFile/Makefile.PL
 Simple/ArrayFile/test.pl
 Simple/MANIFEST
+Simple/Makefile.PL
 Simple/README
 Simple/Simple.pm
 Simple/test.pl
