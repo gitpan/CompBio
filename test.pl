@@ -1,5 +1,6 @@
 use strict;
 use Test::More tests => 14;
+use warnings;
 
 # use a BEGIN block so we print our plan before MyModule is loaded
 BEGIN {
@@ -23,7 +24,9 @@ ok(@na_seqs == 10,"seqs loaded from DATA"); # succesfully loaded test data
 my $cbc = CompBio->new;
 ok(ref($cbc) eq "CompBio" && $cbc->{'_created'},"new \$cbc object created");
 
-ok($cbc->check_type(\@na_seqs) eq "CDNA","check_type");
+my $type = $cbc->check_type(\@na_seqs);
+ok($type eq "CDNA","check_type");
+print "check_type returned $type.\n" if $DEBUG >= 1;
 (my $junk,my $rawseq_w) = split(/\t/,$na_seqs[2]);
 ($junk,my $rawseq_c) = split(/\t/,$na_seqs[6]);
 

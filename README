@@ -1,7 +1,7 @@
 
 
 
-User Contributed Perl Documentation                    CompBio(3)
+User Contributed Perl Documentation           CompBio::CompBio(3)
 
 
 
@@ -16,19 +16,20 @@ SSSSYYYYNNNNOOOOPPPPSSSSIIIISSSS
 
 DDDDEEEESSSSCCCCRRRRIIIIPPPPTTTTIIIIOOOONNNN
      The CompBio module set is being developed as a new
-     implimentation of the code base originally developed at the
+     implementation of the code base originally developed at the
      BioMolecular Engineering Research Center (http://bmerc-
      www.bu.edu). CompBio.pm is intended to take a number of
-     small, commonly used methods, and make them into a single
-     package. Many of the utils are just command line interfaces
-     to the methods contained herein.
+     small, commonly used methods for supporting bioinformatics
+     research, and make them into a single package. Many of the
+     utils included with this distribution are just command line
+     interfaces to the methods contained herein.
 
      The CompBio module set is _not_ intended to replace the
      bioperl project (http://www.bioperl.org/). Although I do
      welcome suggestions for improving or adding to the methods
      available in these modules, particularly I would love any
      help with things on the TO DO list, these modules are not
-     intended to provide the debth that the bioperl suite can
+     intended to provide the depth that the bioperl suite can
      provide.
 
      CompBio has a limited API. It expects it's input to be in
@@ -37,7 +38,7 @@ DDDDEEEESSSSCCCCRRRRIIIIPPPPTTTTIIIIOOOONNNN
      me for that method. It does no error checking by and large,
      so incorrect input could cause bizzare behavior and/or a
      noisy death. If you want a flexible interface with lots of
-     error checking and deep levels of vebosity, use the
+     error checking and deep levels of verbosity, use the
      CompBio::Simple manpage - that's its job.
 
      Thanks!
@@ -56,21 +57,21 @@ DDDDEEEESSSSCCCCRRRRIIIIPPPPTTTTIIIIOOOONNNN
      the DB module be required for Simple to work, I think that
      if you have the space for it, you will find having the data
      locally and adding this module (or adapting it to work with
+
+
+
+2001-09-19          Last change: perl v5.6.0                    1
+
+
+
+
+
+
+User Contributed Perl Documentation           CompBio::CompBio(3)
+
+
+
      databases already installed) will have an imense and
-
-
-
-2001-09-14          Last change: perl v5.6.0                    1
-
-
-
-
-
-
-User Contributed Perl Documentation                    CompBio(3)
-
-
-
      imediate benifiacial impact. It did for us at least! :)
 
      The Profile module was designed to work with our PIMA-II
@@ -122,20 +123,21 @@ MMMMeeeetttthhhhooooddddssss
      records look the same and does not do any kind of deep QA on
      the set. If you are not sure, invoke check_type with a few
      random samples from your set, or use the CompBio::Simple
+
+
+
+2001-09-19          Last change: perl v5.6.0                    2
+
+
+
+
+
+
+User Contributed Perl Documentation           CompBio::CompBio(3)
+
+
+
      manpage, which does that by default.
-
-
-
-2001-09-14          Last change: perl v5.6.0                    2
-
-
-
-
-
-
-User Contributed Perl Documentation                    CompBio(3)
-
-
 
      ttttbbbbllll____ttttoooo____ffffaaaa
 
@@ -187,21 +189,21 @@ User Contributed Perl Documentation                    CompBio(3)
      _s_e_q_u_e_n_c_e(s) in table(.tbl) format contained in a referenced
      array.
 
+
+
+
+2001-09-19          Last change: perl v5.6.0                    3
+
+
+
+
+
+
+User Contributed Perl Documentation           CompBio::CompBio(3)
+
+
+
      `$aref_igseqs = $cbc-'ig_to_tbl(\@fa_seq);>
-
-
-
-
-2001-09-14          Last change: perl v5.6.0                    3
-
-
-
-
-
-
-User Contributed Perl Documentation                    CompBio(3)
-
-
 
      Extra comment lines in the ig format will be placed as extra
      tab delimited values after the sequence record.
@@ -219,7 +221,7 @@ User Contributed Perl Documentation                    CompBio(3)
      Options:
 
      C: Set to a true value to indicate dna should be converted
-     to it's compliment before translation.
+     to it's complement before translation.
 
      ALTCODE: A reference to a hash containing alternate coding
      keys where the value is the new aa to code for. Stop codons
@@ -232,12 +234,12 @@ User Contributed Perl Documentation                    CompBio(3)
 
      ccccoooommmmpppplllleeeemmmmeeeennnntttt
 
-     Converts dna to it's complimentary strand. DNA sequence is
+     Converts dna to it's complementary strand. DNA sequence is
      submitted as scalar by reference. There is no return as
      sequence is modified. To maintain original sequence, send a
      reference to a copy.
 
-     `compliment(\$dna);'
+     `complement(\$dna);'
 
      ssssiiiixxxx____ffffrrrraaaammmmeeee
 
@@ -253,22 +255,22 @@ User Contributed Perl Documentation                    CompBio(3)
 
      Options:
 
+
+
+
+2001-09-19          Last change: perl v5.6.0                    4
+
+
+
+
+
+
+User Contributed Perl Documentation           CompBio::CompBio(3)
+
+
+
      ALTCODE: A reference to a hash containing alternate coding
      keys where the value is the new aa to code for. Stop codons
-
-
-
-2001-09-14          Last change: perl v5.6.0                    4
-
-
-
-
-
-
-User Contributed Perl Documentation                    CompBio(3)
-
-
-
      are represented by ".". Multiple allowable values for the
      final dna in the codon may be provided in the format
      AT[TCA].
@@ -312,7 +314,7 @@ User Contributed Perl Documentation                    CompBio(3)
 
      Creates a hash table with amino acid lookups by codon.
      Includes all cases where even an alternate na code (such as
-     M for A or C) would return an unambiguos aa.  Also
+     M for A or C) would return an unambiguous aa.  Also
      consistent with the complement method in this package, ie,
      lower cases in some contexts, for ease of use with
      six_frame.
@@ -322,16 +324,14 @@ User Contributed Perl Documentation                    CompBio(3)
 
 
 
-
-
-2001-09-14          Last change: perl v5.6.0                    5
+2001-09-19          Last change: perl v5.6.0                    5
 
 
 
 
 
 
-User Contributed Perl Documentation                    CompBio(3)
+User Contributed Perl Documentation           CompBio::CompBio(3)
 
 
 
@@ -390,14 +390,14 @@ TTTTOOOO DDDDOOOO - iiiinnnn nnnnoooo ppppaaaarr
 
 
 
-2001-09-14          Last change: perl v5.6.0                    6
+2001-09-19          Last change: perl v5.6.0                    6
 
 
 
 
 
 
-User Contributed Perl Documentation                    CompBio(3)
+User Contributed Perl Documentation           CompBio::CompBio(3)
 
 
 
@@ -456,19 +456,26 @@ AAAAUUUUTTTTHHHHOOOORRRR
 
 
 
-2001-09-14          Last change: perl v5.6.0                    7
+2001-09-19          Last change: perl v5.6.0                    7
 
 
 
 
 
 
-User Contributed Perl Documentation                    CompBio(3)
+User Contributed Perl Documentation           CompBio::CompBio(3)
 
 
+
+     I would like to thank the staff at the BMERC for being my
+     guinee pigs for the past few years, Jim Freeman who got me
+     into this and left me with flint and tinder rather than the
+     ember in a clay pot he started with, and my boss and
+     (tor)mentor Dr. Temple F. Smith! I would never have gotten
+     this far or learned this much without them.
 
 SSSSEEEEEEEE AAAALLLLSSSSOOOO
-     _p_e_r_l(1), CompBio::Simple, CompBio::DB.
+     _p_e_r_l(1), _C_o_m_p_B_i_o::_S_i_m_p_l_e(1).
 
 
 
@@ -515,14 +522,7 @@ SSSSEEEEEEEE AAAALLLLSSSSOOOO
 
 
 
-
-
-
-
-
-
-
-2001-09-14          Last change: perl v5.6.0                    8
+2001-09-19          Last change: perl v5.6.0                    8
 
 
 

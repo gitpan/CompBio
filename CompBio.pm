@@ -7,7 +7,7 @@ require Exporter;
 
 our @ISA = qw(Exporter);
 
-# these are all expected to become unecisary
+# these are all expected to become unecessary
 our $GENOME_HOME = "/seq/genome"; # base directory for genome databases
 our $DBSERVER = "mysql"; # server type, as used for calling DBI::DBD driver
 our $DBHOST = "sigler.bu.edu"; # location of server
@@ -19,7 +19,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw(check_type tbl_to_fa tbl_to_ig fa_to_tbl ig_t
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT = qw($GENOME_HOME $DBSERVER $DBHOST $CPUSERVER);
 
-our $VERSION = '0.46';
+our $VERSION = '0.461';
 our $DEBUG = 0;
 
 =head1 NAME
@@ -34,24 +34,25 @@ my $cbc = new->CompBio;
 
 =head1 DESCRIPTION
 
-The CompBio module set is being developed as a new implimentation of the code
+The CompBio module set is being developed as a new implementation of the code
 base originally developed at the BioMolecular Engineering Research Center
 (http://bmerc-www.bu.edu). CompBio.pm is intended to take a number
-of small, commonly used methods, and make them into a single package. Many
-of the utils are just command line interfaces to the methods contained herein.
+of small, commonly used methods for supporting bioinformatics research, and
+make them into a single package. Many of the utils included with this
+distribution are just command line interfaces to the methods contained herein.
 
 The CompBio module set is _not_ intended to replace the bioperl project
 (http://www.bioperl.org/). Although I do welcome suggestions for improving
 or adding to the methods available in these modules, particularly I would
 love any help with things on the TO DO list, these modules are not intended
-to provide the debth that the bioperl suite can provide.
+to provide the depth that the bioperl suite can provide.
 
 CompBio has a limited API. It expects it's input to be in specific
 formats, as described in each methods description, and it's output
 is in a format that makes the most sense to me for that method. It does
 no error checking by and large, so incorrect input could cause bizzare
 behavior and/or a noisy death. If you want a flexible interface with lots
-of error checking and deep levels of vebosity, use L<CompBio::Simple> - that's
+of error checking and deep levels of verbosity, use L<CompBio::Simple> - that's
 its job.
 
 Thanks!
@@ -97,7 +98,7 @@ sub new($%) {
     my $self = {};
 
     #handle params as nec. such as setting debug or changing env. variables
-    $DEBUG = $parameters{'DEBUG'};
+    $DEBUG = $parameters{'DEBUG'} || 0;
     (require warnings && import warnings) if $DEBUG; #??
     (require diagnostics && import diagnostics) if $DEBUG >= 2; #??
     $self->{'_created'} = 1;
@@ -147,7 +148,7 @@ sub check_type {
     print "Checking type for:\n",join("\n",@$seq[0..2]),"\n" if $DEBUG >= 3;
     
     # TBL should only accept aa codes
-    if ($$seq[0] =~ /^.+?\t[CTUAGctuag]+\*?(\t|$)/) { return "CDNA" }
+    if ($$seq[0] =~ /^.+?\t[CTUAGctuag]+\*?(\t|\n|$)/) { return "CDNA" }
     elsif ($$seq[0] =~ /^.+?\t[A-Za-z!\.]+\*?(\t|$)/) { return "TBL" }
     elsif ($$seq[0] =~ /^>.+\n[A-Za-z!\.]+\*?$/m) { return "FA" }
     elsif ($$seq[0] =~ /^(;.*\n)+\S+\n[A-Za-z!\.\*]+1?$/m) { return "IG" }
@@ -260,36 +261,39 @@ sub fa_to_tbl {
 
     # traverse referenced array and convert
     foreach (@$aref_seqs) {
-        chomp;
+        my $seqrec = $_; # to avoid calling non-existant STORE on tied array
+        chomp $seqrec;
         my $tbl = my $rem = "";
         
-    	foreach (split(/[\n\r]+/)) {
-    	    if (/^\s*>(\S+)\s*(.*)/) {
+    	foreach (split(/[\n\r]+/,$seqrec)) {
+    	    my $test = $_;
+            if ($test =~ /^\s*>(\S+)\s*(.*)/) {
                 my $sig = $1;
                 $rem = $2;
                 # maybe a better keyword than CLEAN?
-                if (s/^(\S+\|\S+) /$1\t/) {
-                    s/>\w+\|(\d+)\|//;
+                if ($test =~ s/^(\S+\|\S+) /$1\t/) {
+                    $test =~ s/>\w+\|(\d+)\|//;
                     $sig = $1 if $1;
-                    s/\|+/\t/g;
+                    $test =~ s/\|+/\t/g;
                     $rem = $_;
                 } # turn those annoying genbank pipes into tabs
                 
                 if ($params{'CLEAN'} && $sig =~ /([^\s\|\\?\/!*]{4,})/) {
                     $sig = $1;
                 } # elsif
-    	        $tbl .= "$sig\t";
+                print "In fa_to_tbl using $sig as tbl id field\n" if $DEBUG >= 1;
+    	        $tbl = "$sig\t";
     	    } # if id line
 
     	    else {
-	        s/[\*1\!\.]$//;
-    	        $tbl .= $_;
+	        $test =~ s/[\*1\!\.]$//;
+    	        $tbl .= $test;
     	    } # else
         } # foreach line in seqrec
         $tbl .= "\t$rem" if $rem;
         push(@ret,$tbl);
     } # foreach seqrec
-
+    
     return \@ret;
 } # fa_to_tbl
 
@@ -362,7 +366,7 @@ C<$aa = dna_to_aa(\$dna_seq,%params);>
 
 Options:
 
-C: Set to a true value to indicate dna should be converted to it's compliment
+C: Set to a true value to indicate dna should be converted to it's complement
 before translation.
 
 ALTCODE: A reference to a hash containing alternate coding keys where the value 
@@ -387,7 +391,7 @@ sub dna_to_aa {
     my %AA = aa_hash();
     $$sref_seq = uc($$sref_seq);
     $$sref_seq =~ tr/U/T/;
-    print $$sref_seq,"\n" if $DEBUG > 1;
+    print "in dna_to_aa recieved:\n",$$sref_seq,"\n" if $DEBUG > 1;
     
     if($params{'ALTCODE'}) {
     	while ((my $codon,my $aar) = each %{$params{'ALTCODE'}}) {
@@ -398,7 +402,7 @@ sub dna_to_aa {
     	} # for each alternate codon
     } # if
 
-    if ($params{'C'}) { # convert all characters to thier compliment
+    if ($params{'C'}) { # convert all characters to thier complement
     	$sref_seq = complement($sref_seq);
 #        die "Recieved C";
     } # if
@@ -414,16 +418,17 @@ sub dna_to_aa {
         $ret =~ s/\.$//;
     } # clean up ends for use as aa seq
     
+    print "dna_to_aa produced $ret\n" if $DEBUG >= 3;
     return \$ret;
 } # dna_to_aa
 
 =head2 complement
 
-Converts dna to it's complimentary strand. DNA sequence is submitted as scalar
+Converts dna to it's complementary strand. DNA sequence is submitted as scalar
 by reference. There is no return as sequence is modified. To maintain original
 sequence, send a reference to a copy.
 
-C<compliment(\$dna);>
+C<complement(\$dna);>
 
 =cut
 sub complement {
@@ -588,7 +593,7 @@ sub _stop {
     if ($raw_len) {
     	$start = $loc;
     	$end = $loc - ($len * 3) + 1;
-    } # if seq from complimentary strand
+    } # if seq from complementary strand
     else {
     	$start = $loc - ($len * 3) + 1;
 	$end = $loc;
@@ -698,7 +703,7 @@ sub _error {
 =head2 AA_HASH
 
 Creates a hash table with amino acid lookups by codon. Includes all cases where
-even an alternate na code (such as M for A or C) would return an unambiguos aa.
+even an alternate na code (such as M for A or C) would return an unambiguous aa.
 Also consistent with the complement method in this package, ie, lower cases in
 some contexts, for ease of use with six_frame.
 
@@ -1047,6 +1052,12 @@ Finished modifying tbl_to* converters to make a pass at handeling extra
 data feilds from table format and changing *_to_tbl converters to keep
 extra data besides id in extra fields in table format.
 
+=item 0.461
+
+Started working on bringing the utility programs included into using
+CompBio::Simple, using dna_to_aa as first trial. Also some small changes
+to docs.
+
 =back
 
 =head1 TO DO - in no particular order
@@ -1110,8 +1121,14 @@ Sean Quinlan, seanq@darwin.bu.edu
 Please email me with any changes you make or suggestions for changes/additions.
 Latest version is available under ftp://mcclintock.bu.edu/BMERC/perl/. Thank you!
 
+I would like to thank the staff at the BMERC for being my guinee pigs for
+the past few years, Jim Freeman who got me into this and left me with flint
+and tinder rather than the ember in a clay pot he started with, and my boss
+and (tor)mentor Dr. Temple F. Smith! I would never have gotten this far or
+learned this much without them.
+
 =head1 SEE ALSO
 
-perl(1), CompBio::Simple, CompBio::DB.
+perl(1), CompBio::Simple(1).
 
 =cut

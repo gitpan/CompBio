@@ -7,7 +7,6 @@ use Carp qw(cluck confess croak carp);
 use CompBio;
 use CompBio::Simple::ArrayFile;
 
-our @ISA = qw(Exporter);
 use vars qw($AUTOLOAD);
 
 our $VERSION = '0.44';
@@ -118,7 +117,7 @@ enough generally, 3 and higher can produce overwhelming amounts of output, 4
 or higher will also cause the program to die where it would otherwise warn.
 
 =cut
-sub new($%) {
+sub new {
     my ($proto,%parameters) = @_;
     my $class = ref($proto) || $proto;
     my $self = {};
@@ -147,6 +146,7 @@ sub check_type {
     my ($self,$AR_seqs,$return_type,%params) = _munge_seq_input(@_);
         
     local $DEBUG = exists $params{DEBUG} ? $params{DEBUG} : $DEBUG;
+    
     if ($DEBUG >= 3) { foreach my $k (keys %$self) { print "$k\t$$self{$k}\n" } }
     print ref($AR_seqs),"<- ref?\n" if $DEBUG >= 2;
     if ($DEBUG >= 2) { foreach my $k (keys %params) { print "$k\t$params{$k}\n" } }
@@ -197,7 +197,7 @@ sub six_frame {
 sub complement {
 } # complement
 
-# why aren't I checking format type and converting as necisary?!?
+# why aren't I checking format type and converting as necessary?!?
 # simple should DTRT here! Think about data storage situations where
 # converting to array will ruin type formating - and data. And where
 # check_type will fail on sequence format incorrect. This should end
@@ -216,6 +216,7 @@ sub dna_to_aa {
     return _munge_seq_return($AR_ret,$return_type,%params);
 } # dna_to_aa
 
+# this is still way to brute force
 sub _munge_array_to_scalar {
     my $self = shift;
     my $AR_seqs = shift;
@@ -253,9 +254,15 @@ sub _munge_array_to_scalar {
     # can't I compress these next two?
     elsif ($guess eq "FA") {
         $AR_seqs = $$self{cbc}->fa_to_tbl($AR_seqs,%params);
+        print join("\n",@$AR_seqs),"\nReturned from fa_to_tbl\n" if ($DEBUG >= 2);
         foreach my $seq (@$AR_seqs) {
-            my ($id,$dna) = split($seq);
-            my $ret = $id . ${$$self{cbc}->$caller(\$dna,%params)};
+            (my $id,my $dna) = split(" ",$seq);
+            print "Passing sequence from $id to $caller\n"  if ($DEBUG >= 1);
+            my $result = ${$$self{cbc}->$caller(\$dna,%params)};
+            my $ret = "$id\t";
+            if (ref $result) { $ret .= $$result }
+            else { $ret .= $result }
+            print "Recieved $ret from $caller.\n" if ($DEBUG >= 2);
             push(@$AR_ret,$ret);
         } # foreach
         $AR_ret = $$self{cbc}->tbl_to_fa($AR_ret,%params);
@@ -304,23 +311,27 @@ sub _munge_seq_input {
     } # array ref passed in
     elsif ($ref eq "HASH") {
         foreach my $k (keys %$seq) { push(@$AR_seqs,join("\t",($k,$$seq{$k}))) }
-        $return_type = "|";
+        $return_type = "HASH";
     } # if hash submitted
     elsif (! $ref || $ref eq "SCALAR") {
         my $new_ref = "";
         my @tmparray = ();
+        # this was needed to avoid turning off warn for whole section under filetest
+        # as a value with a newline blew up the file stat, but chomp ruins refs
+        my $filetest = $seq;
+        chomp($filetest);
         
-        if (-s $seq) {
-            unless (open(DAT,$seq)) {
-                _error("Can't read table file $seq: $!");
+        if (-s $filetest) {
+            unless (open(DAT,$filetest)) {
+                _error("Can't read table file $filetest: $!");
                 return;
             } # can't open DAT
             # 6 lines @ 80 char/line or enough of a tbl, raw or cdna seq to be fairly sure
             read(DAT,$tmparray[0],480);
             my $guess = $$self{cbc}->check_type(\@tmparray,%params);
-            if ($guess eq "UNKNOWN") { _error("Can't determine sequence format") }
+            if ($guess eq "UNKNOWN") { _error("Can't determine sequence format from $tmparray[0]") }
             else {
-                tie @$AR_seqs,"CompBio::Simple::ArrayFile",$guess;
+                tie @$AR_seqs,"CompBio::Simple::ArrayFile",$filetest,$guess;
             } # tie array to file
             $return_type = "ARRAY";
         } # we have a file to read
@@ -541,7 +552,7 @@ C<$aa = dna_to_aa(\$dna_seq,%params);>
 
 Options:
 
-C: Set to a true value to indicate dna should be converted to it's compliment
+C: Set to a true value to indicate dna should be converted to it's complement
 before translation.
 
 ALTCODE: A reference to a hash containing alternate coding keys where the value 
@@ -552,11 +563,11 @@ removing stop in last position.
 
 =head2 complement
 
-Converts dna to it's complimentary strand. DNA sequence is submitted as scalar
+Converts dna to it's complementary strand. DNA sequence is submitted as scalar
 by reference. There is no return as sequence is modified. To maintain original
 sequence, send a reference to a copy.
 
-C<compliment(\$dna);>
+C<complement(\$dna);>
 
 =head2 six_frame
 
@@ -587,7 +598,7 @@ results will be sent directly to standard out.
 =head2 AA_HASH
 
 Creates a hash table with amino acid lookups by codon. Includes all cases where
-even an alternate na code (such as M for A or C) would return an unambiguos aa.
+even an alternate na code (such as M for A or C) would return an unambiguous aa.
 Also consistent with the complement method in this package, ie, lower cases in
 some contexts, for ease of use with six_frame.
 
@@ -633,6 +644,12 @@ request to DB to attempy to fulfil, and/or accept a DB param.
 
 Look at using a tie type method similar to ArrayFile.pm for fetching data from
 a database - simply throwing an exception if no db module provided (eval use?).
+
+rewrite (<sigh>) _munges to detect submited format (fasta, etc) and return same
+format whenever possible by default, and adding RETURN_FORMAT parameter, negating
+the need for user to call converter after dna_to_aa for example. *This is probably
+over the top since most methods _are_ the converters, but why make myself write
+if/elsif block in all the utils that offer different format returns?*
 
 =head1 COPYRIGHT
 

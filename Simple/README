@@ -1,7 +1,7 @@
 
 
 
-User Contributed Perl Documentation                     Simple(3)
+User Contributed Perl Documentation    CompBio::Simple::Simple(3)
 
 
 
@@ -60,14 +60,14 @@ MMMMeeeetttthhhhooooddddssss
 
 
 
-2001-09-14          Last change: perl v5.6.0                    1
+2001-09-25          Last change: perl v5.6.0                    1
 
 
 
 
 
 
-User Contributed Perl Documentation                     Simple(3)
+User Contributed Perl Documentation    CompBio::Simple::Simple(3)
 
 
 
@@ -126,14 +126,14 @@ User Contributed Perl Documentation                     Simple(3)
 
 
 
-2001-09-14          Last change: perl v5.6.0                    2
+2001-09-25          Last change: perl v5.6.0                    2
 
 
 
 
 
 
-User Contributed Perl Documentation                     Simple(3)
+User Contributed Perl Documentation    CompBio::Simple::Simple(3)
 
 
 
@@ -192,14 +192,14 @@ User Contributed Perl Documentation                     Simple(3)
 
 
 
-2001-09-14          Last change: perl v5.6.0                    3
+2001-09-25          Last change: perl v5.6.0                    3
 
 
 
 
 
 
-User Contributed Perl Documentation                     Simple(3)
+User Contributed Perl Documentation    CompBio::Simple::Simple(3)
 
 
 
@@ -242,7 +242,7 @@ User Contributed Perl Documentation                     Simple(3)
      Options:
 
      C: Set to a true value to indicate dna should be converted
-     to it's compliment before translation.
+     to it's complement before translation.
 
      ALTCODE: A reference to a hash containing alternate coding
      keys where the value is the new aa to code for. Stop codons
@@ -253,26 +253,26 @@ User Contributed Perl Documentation                     Simple(3)
 
      ccccoooommmmpppplllleeeemmmmeeeennnntttt
 
-     Converts dna to it's complimentary strand. DNA sequence is
+     Converts dna to it's complementary strand. DNA sequence is
      submitted as scalar by reference. There is no return as
 
 
 
-2001-09-14          Last change: perl v5.6.0                    4
+2001-09-25          Last change: perl v5.6.0                    4
 
 
 
 
 
 
-User Contributed Perl Documentation                     Simple(3)
+User Contributed Perl Documentation    CompBio::Simple::Simple(3)
 
 
 
      sequence is modified. To maintain original sequence, send a
      reference to a copy.
 
-     `compliment(\$dna);'
+     `complement(\$dna);'
 
      ssssiiiixxxx____ffffrrrraaaammmmeeee
 
@@ -308,7 +308,7 @@ User Contributed Perl Documentation                     Simple(3)
 
      Creates a hash table with amino acid lookups by codon.
      Includes all cases where even an alternate na code (such as
-     M for A or C) would return an unambiguos aa.  Also
+     M for A or C) would return an unambiguous aa.  Also
      consistent with the complement method in this package, ie,
      lower cases in some contexts, for ease of use with
      six_frame.
@@ -324,14 +324,14 @@ HHHHIIIISSSSTTTTOOOORRRRYYYY
 
 
 
-2001-09-14          Last change: perl v5.6.0                    5
+2001-09-25          Last change: perl v5.6.0                    5
 
 
 
 
 
 
-User Contributed Perl Documentation                     Simple(3)
+User Contributed Perl Documentation    CompBio::Simple::Simple(3)
 
 
 
@@ -363,6 +363,14 @@ TTTTOOOO DDDDOOOO
      fetching data from a database - simply throwing an exception
      if no db module provided (eval use?).
 
+     rewrite (<sigh>) _munges to detect submited format (fasta,
+     etc) and return same format whenever possible by default,
+     and adding RETURN_FORMAT parameter, negating the need for
+     user to call converter after dna_to_aa for example. *This is
+     probably over the top since most methods _are_ the
+     converters, but why make myself write if/elsif block in all
+     the utils that offer different format returns?*
+
 CCCCOOOOPPPPYYYYRRRRIIIIGGGGHHHHTTTT
      Developed at the BioMolecular Engineering Research Center at
      Boston University under the NHLBI's Programs for Genomic
@@ -378,6 +386,21 @@ CCCCOOOOPPPPYYYYRRRRIIIIGGGGHHHHTTTT
 AAAAUUUUTTTTHHHHOOOORRRR
      Sean Quinlan, seanq@darwin.bu.edu
 
+
+
+
+
+2001-09-25          Last change: perl v5.6.0                    6
+
+
+
+
+
+
+User Contributed Perl Documentation    CompBio::Simple::Simple(3)
+
+
+
      Please email me with any changes you make or suggestions for
      changes/additions.  Latest version is available under
      ftp://mcclintock.bu.edu/BMERC/perl/.
@@ -390,7 +413,50 @@ SSSSEEEEEEEE AAAALLLLSSSSOOOO
 
 
 
-2001-09-14          Last change: perl v5.6.0                    6
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2001-09-25          Last change: perl v5.6.0                    7
 
 
 

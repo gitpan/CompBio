@@ -1,20 +1,81 @@
 #!/usr/local/bin/perl -w
 
 use strict;
-use BMERC::bio qw(fa_to_tbl);
+use CompBio::Simple;
+use Getopt::Long;
 
-my $argv = $ARGV[0];
-
-if(! defined $argv || $argv =~ /\?$|^-?help$|^-?h$/i){
-    print <<HELP_LINES;
-    
-fa-to-tbl accepts filename to be converted. Output is to STDOUT.
-    
-Copyright Sean Quinlan, Trustees of Boston University 1999.
-
-HELP_LINES
-exit;
+if(! defined $ARGV[0]){
+    print "fa_to_tbl \n";
+    exit;
 }#if
+
+mmy $stdin = ""; # '' allows - in command args to indicate input from stdin (console or pipe)
+my %opt = ();
+my $result = GetOptions(\%opt,'help|h','' => \$stdin,'out|o=s');
+my $VERSION = '0.01';
+
+if ($opt{"help"}) { exec "perldoc $0" }
+
+=head1 NAME
+
+fa_to_tbl - Convert sequence records in fasta format to table format
+
+=head1 SYNOPSIS
+
+
+
+=head1 DESCRIPTION
+
+
+
+=cut
+
+
+if ($opt{'out'}) {
+    # should probably add some safety precautions here, check uid, if file exists, etc
+    open (OUT,"> $opt{'out'}") or die "Can't open requested outfile $opt{'out'}: $!";
+    select OUT;
+}
+
+$| = 1; # because I am inherently impatient
+# Just bomb the code from here to TODO if not using input file. Might as well 
+# remove the $stdin stuff from above too then.
+my $F;
+my $input_file = shift; 
+
+if ($stdin) { $F = *STDIN } 
+elsif (-r $input_file) {
+    open F,$input_file or die "Can't open $input_file: $!";
+    $F = *F;
+}
+
+while(<$F>) {
+    chomp;
+    my @fields = split;
+} # while
+
+=head1 TODO
+
+
+
+=head1 COPYRIGHT
+
+Copyright Sean Quinlan, Trustees of Boston University 2001.
+
+=head1 AUTHOR
+
+Sean Quinlan, seanq@darwin.bu.edu
+
+Please email me with any changes you make or suggestions for changes/additions. Thank you!
+
+=head1 SEE ALSO
+
+perl(1).
+
+=cut
+
+
+
 my @fa = ();
 my $F = "";
 if ($argv eq "-") { $F = *STDIN }

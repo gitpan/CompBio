@@ -1,29 +1,221 @@
 #!/usr/local/bin/perl -w
 
-if(! $ARGV[0] || $ARGV[0] =~ /help|-h/i){
-    print <<HELP_LINES;
-    
-Takes a raw dna sequence as input from STDIN, not from file. Output 
-is to STDOUT. 
-Acepts second argument <c> which indicates to translate to compliment
-before translating. This version now tries to replace as many special
-characters in the dna (i.e. M,R,W, etc) with allowable proteins as possible.
+use CompBio::Simple;
+use strict;
+use Getopt::Long;
 
-HELP_LINES
-exit;
+if(! defined $ARGV[0]){
+    print "dna_to_aa (dna|dnafile|-) <-fa|-ig> <-o|out outfile> <-c> <-s>
+        <-a> <-v>+\n";
+    exit;
 }#if
 
-use CompBio::Simple('dna_to_protein');
-use strict;
+my %opt = ();
+my $stdin = ""; # '' allows - in command args to indicate input from stdin (console or pipe)
+
+my $result = GetOptions(\%opt,'' => \$stdin,'help|h','s','c','fa','ig','alt|a',
+    'out|o=s','v+','tbl');
+my $VERSION = '0.4';
+
+if ($opt{"help"}) { exec "perldoc $0" }
+
+
+=head1 NAME
+
+dna_to_aa - Translate dna sequence(s) to aa
+
+=head1 SYNOPSIS
+
+# Basic call format translating a set of sequences in a file containing coding dna records
+
+C<shell% dna_to_aa interesting_seqs.cdna>
+
+# Translate a fragment supplied directly on the command line
+
+C<shell% dna_to_aa -s ATGAAACGCATTAGCACCACCATTACCACCACCATCACCATTACCACAGGTAACGGTGCGGGCTGA>
+
+# Pipe output to dna_to_aa
+
+C<shell% head exons.raw | dna_to_aa ->
+
+# seqfixed translation of sequenses needing to be converted to complement
+# first, output to a file
+
+C<shell% dna_to_aa -s -c anti_sense_exons.cdna -o translated_as_exons.tbl>
+
+=head1 DESCRIPTION
+
+dna_to_aa is a command line utility accessing the dna_to_aa method in the
+CompBio/Simple.pm module. See L<CompBio::Simple/"dna_to_aa"> for more details.
+
+DNA sequences may be submitted in raw or table formats (.cdna is a table format
+file containng only coding dna).
+
+=cut
+
+my %aa = ();
+if($opt{'alt'}) {
+    die "Can't interactively enter alternate coding while taking sequences from standard input, sorry.\n" if $stdin;
+    &alt_coding(\%aa);
+} # if alt
 
 my $cbs = CompBio::Simple->new;
 
 my $seq = $ARGV[0];
 my %params = ();
-if ($ARGV[1] && $ARGV[1] =~ /-[Cc]/) { $params{C} = 1 }
-if ($ARGV[2] && $ARGV[2] =~ /-[Ss]/) { $params{SEQFIX} = 1 }
+$params{SEQFIX} = 1 if $opt{s};
+$params{OUTFILE} = $opt{out} if $opt{out};
+$params{C} = 1 if $opt{c};
+$params{DEBUG} = $opt{v} if $opt{v};
+$params{ALTCODE} = \%aa if (keys %aa);
+$params{RETURN_FORMAT} = "IG" if $opt{ig};
+$params{RETURN_FORMAT} = "FA" if $opt{fa};
+$params{RETURN_FORMAT} = "TBL" if $opt{tbl};
 
-print $cbs->dna_to_protein(\$seq,%params),"\n";
 
-exit;
+
+my $F;
+my $input_file = shift; 
+
+if ($stdin) {
+    while (<>) {
+        my $result = $cbs->dna_to_aa($_,%params);
+        print $result if $result;
+    } # while
+} # loop over std in
+elsif ($input_file) {
+    print join("\n",@{$cbs->dna_to_aa($input_file,%params)}),"\n";
+} # either a single sequence on the comand line or a file - let Simple handle it
+else {
+    die "No dna provided to translate!\n";
+} # no dna?
+
+sub alt_coding {
+    my $href = shift;
+    my @all = qw(T C A G X N M R W S Y K V H D B m r w s y k v h d b);
+    
+    print "Use the * wildcard in third position to indicate any code.\n";
+    while(1) {
+        print "Enter codon to alter[done]: ";
+        chomp(my $codon = <STDIN>);
+
+        last if ($codon =~ /^d$|^done/i || ! $codon);
+        $codon = uc $codon;
+
+        if ($codon !~ /^[ACGTU]{2}[A-Z\*]$/) {
+            print "Sorry, $codon contains illegal characters, are you sure you want to use?[NO]: ";
+            chomp(my $use = <STDIN>);
+            next if (! $use || $use =~ /^no?$/i);
+        } # if
+
+        print "Enter amino acid $codon codes for: ";
+        chomp(my $alt = <STDIN>);
+        last if ($alt =~ /^d$|^done/i || ! $alt);
+        $alt = uc $alt;
+
+        if ($alt !~ /^[ARNDBCQEZGHILKMFPSTWYZ\.]$/) {
+            print "$alt is not a regognized aa, are you sure you want to use?[NO]: ";
+            chomp(my $use = <STDIN>);
+            next if (! $use || $use =~ /^no?$/i);
+        }
+
+        if ($codon =~ /^([A-Z]{2})\*$/) {
+            foreach (@all) {
+                $codon = "$1$_";
+                $$href{$codon} = $alt;
+            }
+        } # last position uninformative
+        else { $$href{$codon} = $alt }
+    } # while getting alternate codons
+    return 1;
+} # alt_coding
+
+exit(0);
 __END__
+
+=head1 OPTIONS:
+
+=over 4
+
+=item B<s>
+
+Activates the SEQFIX option, removing a trailing stop and converting a V or L
+in the first position to an M. Usually the correct thing to do when converting
+coding dna to it's aa sequence.
+
+=item B<c>
+
+Instructs dna_to_aa to convert dna to it's comlementary strand before translating
+to aa.
+
+=item B<fa>
+
+Output aa sequence(s) in fasta format. *NOTE* This will report an error if
+raw dna sequence provided, i.e. no id provided in submision format. 
+
+=item B<ig>
+
+Output aa sequence(s) in ig format. *NOTE* This will report an error if
+raw dna sequence provided, i.e. no id provided in submision format.
+
+=item B<alt>
+
+Activates shell interface for entering alternate coding instructions. You can
+alter the aa coded for by any codon, or even add codons for non-standard
+alternate codes used in your dna sequence data. The interface accepts one
+codon at a time, and will query for the aa it codes for.
+
+WARNING! This option can not be used when piping input to dna_to_aa! So commands
+like C<head ecoli.cdna | dna_to_aa -alt -> will fail, as dna_to_aa will read
+the input stream as responses to the interactive shells queries for alternate
+codons.
+
+=item B<out> <filename>
+
+A file to write the output to.
+
+=item B<v>
+
+Increases the verbosity of the error reporting. The more -v flags provided, the
+more debugging output is provided. See L<CompBio::Simple/DEBUG>.
+
+=item B<->
+
+Indicates input dna sequence(s) are to be read from the standard input stream.
+
+=back
+
+=head1 TODO
+
+Add AT[GT] parsing to &alt_coding
+
+Find a way to allow alternate codon entry when also taking sequence
+input from STDIN
+
+Add preparser for accepting other input formats such as fasta, at least when
+supplied in an input file.
+
+=head1 COPYRIGHT
+
+Developed at the BioMolecular Engineering Research Center
+(http://bmerc-www.bu.edu/) at Boston University (http://www.bu.edu/)
+under the NHLBI's Programs for Genomic Applications grant.
+
+Copyright Sean Quinlan, Trustees of Boston University 2000-2001.
+
+All rights reserved. This program is free software; you can redistribute it
+and/or modify it under the same terms as Perl itself.
+
+=head1 AUTHOR
+
+Sean Quinlan, seanq@darwin.bu.edu
+
+Please email me with any changes you make or suggestions for changes/additions.
+Latest version is available with the CompBio distribution on CPAN () or
+under ftp://mcclintock.bu.edu/BMERC/perl/. Thank you!
+
+=head1 SEE ALSO
+
+perl(1), CompBio::Simple(1)
+
+=cut
