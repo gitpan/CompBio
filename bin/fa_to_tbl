@@ -1,0 +1,36 @@
+#!/usr/local/bin/perl -w
+
+use strict;
+use BMERC::bio qw(fa_to_tbl);
+
+my $argv = $ARGV[0];
+
+if(! defined $argv || $argv =~ /\?$|^-?help$|^-?h$/i){
+    print <<HELP_LINES;
+    
+fa-to-tbl accepts filename to be converted. Output is to STDOUT.
+    
+Copyright Sean Quinlan, Trustees of Boston University 1999.
+
+HELP_LINES
+exit;
+}#if
+my @fa = ();
+my $F = "";
+if ($argv eq "-") { $F = *STDIN }
+else {
+    open(IN,$argv) or die "Can't read file $argv: $!";
+    $F = *IN;
+}
+
+while(<$F>) {
+    if (/^>/ && $fa[1]) {
+    	print fa_to_tbl(@fa);
+	@fa = ();
+    }
+    
+    push(@fa,$_);
+    
+} # while
+
+print fa_to_tbl(@fa);

@@ -1,0 +1,198 @@
+
+
+
+User Contributed Perl Documentation    CompBio::Simple::Simple(3)
+
+
+
+NNNNAAAAMMMMEEEE
+     CompBio::Simple.pm  - Simple OO interface to some basic
+     methods useful in bioinformatics.
+
+SSSSYYYYNNNNOOOOPPPPSSSSIIIISSSS
+     use CompBio::Simple;
+
+     my $cbs = CompBio::Simple->new;
+
+DDDDEEEESSSSCCCCRRRRIIIIPPPPTTTTIIIIOOOONNNN
+     Originally developed at the BioMolecular Engineering
+     Research Center (http://bmerc-www.bu.edu), this module is
+     intended to take a number of small commonly used methods,
+     and make them into a single package.
+
+     The early versions of this module assumed installation on
+     our local system.  Although I have tried to correct this in
+     the current version, you may find this package requires a
+     litle twidling to get working. I'll try to leave comments
+     where I think it is most likely, but hopefully use of a
+     relational database and local setting changes in the base
+     module CompBio.pm will have taken care of it. If not
+     _please_ email me at seanq@darwin.bu.edu with the details.
+
+     Thanks!
+
+MMMMeeeetttthhhhooooddddssss
+     A couple of important general notes. All methods will
+     describe the key required arguments and will also indicate
+     which arg is the optional %params hash. %params can be
+     passed as a hash or reference. Also, most arguments that
+     handle sequences or ids accept input as scalar, arrays (by
+     reference) or hashes (by reference).  If I miss documenting
+     it, try it just in case. Unless a parameter option is
+     available to signify otherwise, I assume 'doing the right
+     thing' is to return the same type of data construct as
+     recieved.
+
+     nnnneeeewwww
+
+     Construct an object for invoking methods in CompBio::Simple.
+
+     hhhheeeellllpppp
+
+     Quits current application and uses perldoc to display the
+     POD.
+
+     ttttbbbbllll____ttttoooo____ffffaaaa
+
+     Converts a sequence record in table (tab delimited, usually
+     .tbl file extension) format to fasta format.
+
+
+
+
+2001-08-16          Last change: perl v5.6.0                    1
+
+
+
+
+
+
+User Contributed Perl Documentation    CompBio::Simple::Simple(3)
+
+
+
+             C<$fa_seq = $cbs->tbl_to_fa($tblseq,%params);>
+
+     $seqdat can be either scalar, array by reference, 2d array
+     by reference, or a hash by reference; return data type is
+     same as submitted. Scalar may be either sequence records
+     (one record per line), or a filename. Array's should contain
+     an entire sequence record (loci\tsequence) in each indexed
+     position. 2D arrays should be ids in the first column,
+     sequences in the second, such that $array[2][1] would be the
+     aa sequence for the third record. Hash's should have the
+     loci as the key, and only the sequence as the value.
+
+EEEEXXXXPPPPOOOORRRRTTTT
+     None by default.
+
+HHHHIIIISSSSTTTTOOOORRRRYYYY
+     0.01    Original version; created by h2xs 1.20 with options
+
+               -AXC -n CompBio::Simple
+
+
+     0.74    Copy over functions from original BMERC::bio, making
+             small improvements to code, mostly by removing
+             lingering locale assumptions and (hopefully)
+             improving interface, and converting to OOP.
+
+TTTTOOOO DDDDOOOO
+     _munge_seq_imput needs to also detect when it just has a
+     list of loci and hand request to DB to attempy to fulfil,
+     and/or accept a DB param.
+
+     check_type invoked from here should make a few type checks
+     with random samples from the dataset when possible.
+
+CCCCOOOOPPPPYYYYRRRRIIIIGGGGHHHHTTTT
+     Copyright Sean Quinlan, Trustees of Boston University
+     2000-2001.
+
+     All rights reserved. This program is free software; you can
+     redistribute it and/or modify it under the same terms as
+     Perl itself.
+
+AAAAUUUUTTTTHHHHOOOORRRR
+     Sean Quinlan, seanq@darwin.bu.edu
+
+     Please email me with any changes you make or suggestions for
+     changes/additions.  Latest version is available under
+     ftp://mcclintock.bu.edu/BMERC/perl/.
+
+     Thank you!
+
+
+
+
+
+2001-08-16          Last change: perl v5.6.0                    2
+
+
+
+
+
+
+User Contributed Perl Documentation    CompBio::Simple::Simple(3)
+
+
+
+SSSSEEEEEEEE AAAALLLLSSSSOOOO
+     _p_e_r_l(1), _C_o_m_p_B_i_o(3).
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2001-08-16          Last change: perl v5.6.0                    3
+
+
+

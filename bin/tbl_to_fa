@@ -1,0 +1,49 @@
+#!/usr/local/bin/perl -w
+
+use strict;
+use BMERC::bio qw(tbl_to_fa);
+use BMERC::db qw(db_connect);
+
+my $argv = $ARGV[0];
+my $outfile = $ARGV[1] || "";
+
+if(! defined $argv || $argv =~ /\?$|^-?help$|^-?h$/i){
+    print <<HELP_LINES;
+    
+tbl_to_fa accepts either a filename or a local id.
+Output is to optionally provided filename or STDOUT.
+    
+Copyright Sean Quinlan, Trustees of Boston University 1999-2000.
+
+HELP_LINES
+exit;
+}#if
+
+if ($outfile) {
+    open(OUT,"> $outfile") or die "couldn't open requested oufile $outfile: $!";
+    select OUT;
+}
+
+
+# a file conversion, or stream from STDIN
+if (-r $argv || $argv eq "-") {
+    my $F = "";
+    if ($argv eq "-") { $F = *STDIN }
+    else {
+    	open(IN,$argv) or die "Can't read file $argv: $!";
+	$F = *IN;
+    }
+    while(<$F>) {
+    	chomp;
+    	print tbl_to_fa($_);
+    } # while
+
+} # if file
+
+else { # a single id conversion requested
+    my $dbh = &db_connect;
+    my $tbl = $dbh->selectrow_array("SELECT sequence FROM sequence,ids 
+	    WHERE text_id='$argv' AND id=key_id");
+    print tbl_to_fa("$argv\t$tbl");
+    $dbh->disconnect;
+} # else

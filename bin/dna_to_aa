@@ -1,0 +1,29 @@
+#!/usr/local/bin/perl -w
+
+if(! $ARGV[0] || $ARGV[0] =~ /help|-h/i){
+    print <<HELP_LINES;
+    
+Takes a raw dna sequence as input from STDIN, not from file. Output 
+is to STDOUT. 
+Acepts second argument <c> which indicates to translate to compliment
+before translating. This version now tries to replace as many special
+characters in the dna (i.e. M,R,W, etc) with allowable proteins as possible.
+
+HELP_LINES
+exit;
+}#if
+
+use CompBio::Simple('dna_to_protein');
+use strict;
+
+my $cbs = CompBio::Simple->new;
+
+my $seq = $ARGV[0];
+my %params = ();
+if ($ARGV[1] && $ARGV[1] =~ /-[Cc]/) { $params{C} = 1 }
+if ($ARGV[2] && $ARGV[2] =~ /-[Ss]/) { $params{SEQFIX} = 1 }
+
+print $cbs->dna_to_protein(\$seq,%params),"\n";
+
+exit;
+__END__

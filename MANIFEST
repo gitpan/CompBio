@@ -1,0 +1,15 @@
+CompBio.pm
+INSTALL
+MANIFEST
+README
+Simple/MANIFEST
+Simple/README
+Simple/Simple.pm
+Simple/test.pl
+bin/dna_to_aa
+bin/fa_to_tbl
+bin/ig_to_tbl
+bin/six_frame
+bin/tbl_to_fa
+bin/tbl_to_ig
+test.pl

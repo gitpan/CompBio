@@ -1,0 +1,20 @@
+INSTALL intructions for CompBio modules, version .01
+
+Edit the top level CompBio.pm module to have the apropriate settings for the exported globals.
+
+shell> perl Makefile.PL
+
+shell> make
+
+shell> make test
+
+And if all has gone well
+
+shell> make install
+
+
+TO DO:
+
+add a configure script to handle editing the globals in CompBio.pm, or edit Makefile.pl to do so.
+
+

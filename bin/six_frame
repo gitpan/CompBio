@@ -1,0 +1,118 @@
+#!/usr/local/bin/perl -w
+
+use strict;
+use Getopt::Long;
+use CompBio::Core qw(six_frame);
+
+if(! defined $ARGV[0]){
+    print "command description and option list\n";
+    exit;
+}#if
+
+my $stdin = ""; # '' allows - in command args to indicate input from stdin (console or pipe)
+my %opt = ();
+my $result = GetOptions(\%opt,'help|h','' => \$stdin,'out|o=s','min=i','id=s','tbl=s');
+my $VERSION = '0.01';
+
+if ($opt{"help"}) { exec "perldoc $0" }
+
+=head1 NAME
+
+six_frame - Translate dna sequences to aa sequences across all six frames.
+
+=head1 SYNOPSIS
+
+six_frame can take either the filename for a raw genomic sequence file,
+the filename for a set of na sequences in table format, or input on
+STDIN (signified by -) in table format.
+
+=head1 DESCRIPTION
+
+
+
+=cut
+
+
+if ($stdin || $opt{tbl}) {
+    my %params = ();
+    $params{OUTFILE} = $opt{out} ? $opt{out} : "STDOUT";
+    $params{SEQLEN} = $opt{min} if $opt{min};
+    my $fh = *STDIN;
+    if ($opt{tbl}) {
+        open(TBL,$opt{tbl}) or die "Can't open $opt{tbl} for reading\n";
+        $fh = *TBL;
+    } # open up table file for reading
+    
+    while (<$fh>) {
+        chomp;
+        my @fields = split;
+        $params{ID} = $fields[0];
+        six_frame($fields[1],%params);
+    } # read stdin
+} # read sequences from input and translate all
+
+else {
+    my %params = ();
+    my $rawfile = shift;
+    die "$rawfile invalid: $!" unless -r $rawfile;
+    $params{OUTFILE} = $opt{out} ? $opt{out} : "STDOUT";
+    $params{SEQLEN} = $opt{min} if $opt{min};
+    $params{ID} = $opt{id} if $opt{id};
+    six_frame($rawfile,%params);
+} # provided with a raw file
+
+=head1 Options
+
+=over 4
+
+=item B<out|o> <outfile_name>
+
+Filename to send output to.
+
+=item B<min> <integer>
+
+Shortest amino acid sequence to return. Default value is 10.
+
+=item B<id> <identifier>
+
+ID to prefix coding data with for returned sequence. Return format is
+id_start_end<tab>sequence. If no id suplied default value is SixFrame.
+If input is a batch of genomic sequences in table(.tbl) format, the id field
+for each genomic sequence will be used as the ID for six_frame.
+
+=item B<tbl> <tablefile_name>
+
+Name of the table format file containing your set of dna sequences.
+
+=item B<->
+
+Indicates STDIN contains batch of dna sequences in table(.tbl) format for six
+frame translation.
+
+=item B<help|h>
+
+This output.
+
+=back
+
+=head1 TODO
+
+
+
+=head1 COPYRIGHT
+
+Copyright Sean Quinlan, Trustees of Boston University 2001.
+
+=head1 AUTHOR
+
+Sean Quinlan, seanq@darwin.bu.edu
+
+Please email me with any changes you make or suggestions for changes/additions. Thank you!
+
+=head1 SEE ALSO
+
+perl(1).
+
+=cut
+
+
