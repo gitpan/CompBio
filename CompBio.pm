@@ -16,7 +16,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw(check_type tbl_to_fa tbl_to_ig fa_to_tbl ig_t
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT = qw($CONF_FILE $CPUSERVER);
 
-our $VERSION = '0.469';
+our $VERSION = '0.47';
 our $DEBUG = 0;
 our $RET_CODE = sub {
         my $ar_ret = shift;

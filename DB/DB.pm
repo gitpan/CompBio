@@ -18,7 +18,7 @@ our %EXPORT_TAGS = ( 'all' => [ qw() ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT = qw(db_help);
 
-our $VERSION = '0.2';
+our $VERSION = '0.21';
 our $DEBUG = 0;
 
 my $DB_HOST     = 'localhost';
@@ -463,6 +463,12 @@ multiple possible row returns for single ids. Three working get methods passed
 basic tests. Most of the parts of the methods that were always the same are
 now in AUTOLOAD, which calls an internal method to generate the appropriate
 SQL statement.
+
+=item 0.21
+
+Fixed Makefile.pl to require DBD::mysql. That will need to be removed I hope
+when this gets ported to other RDBMs. Also added check in the tests to make
+sure CompBio database is available and skips tests if not.
 
 =back
 

@@ -1,13 +1,21 @@
 use strict;
-use Test::More tests => 6;
+use Test::More;
 use warnings;
+use DBI;
 
 # use a BEGIN block so we print our plan before MyModule is loaded
 BEGIN {
+	my @data_sources = DBI->data_sources('mysql');
+	unless (grep(/CompBio/,@data_sources)) {
+		plan skip_all => "Can't perform tests without CompBio database";
+	} # must have CompBio db installed
+	else { plan tests => 6 }
+	
 	use_ok('CompBio::DB');
     $| = 1;
 } # BEGIN
-my $DEBUG = 0;
+my $DEBUG = 1;
+
 
 my $cbdb1 = CompBio::DB->new;
 ok(ref $cbdb1 eq "CompBio::DB","Default datbase handle creation");
