@@ -15,11 +15,11 @@ our $DBHOST = "sigler.bu.edu"; # location of server
 our $CPUSERVER = "vavilov";
 
 our %EXPORT_TAGS = ( 'all' => [ qw(check_type tbl_to_fa tbl_to_ig fa_to_tbl ig_to_tbl
-    dna_to_protein complement six_frame aa_hash) ] );
+    dna_to_aa complement six_frame aa_hash) ] );
 our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
 our @EXPORT = qw($GENOME_HOME $DBSERVER $DBHOST $CPUSERVER);
 
-our $VERSION = '0.451';
+our $VERSION = '0.46';
 our $DEBUG = 0;
 
 =head1 NAME
@@ -34,33 +34,20 @@ my $cbc = new->CompBio;
 
 =head1 DESCRIPTION
 
+The CompBio module set is being developed as a new implimentation of the code
+base originally developed at the BioMolecular Engineering Research Center
+(http://bmerc-www.bu.edu). CompBio.pm is intended to take a number
+of small, commonly used methods, and make them into a single package. Many
+of the utils are just command line interfaces to the methods contained herein.
+
 The CompBio module set is _not_ intended to replace the bioperl project
-(http://www.bioperl.org/). Although I welcome suggestions for improving
+(http://www.bioperl.org/). Although I do welcome suggestions for improving
 or adding to the methods available in these modules, particularly I would
 love any help with things on the TO DO list, these modules are not intended
-to provide the debth that the bioperl suite can provide. These modules
-grew out of a set we have used at the BMERC(http://bmerc-www.bu.edu) and
-worked with for years.
+to provide the debth that the bioperl suite can provide.
 
-Originally developed at the BioMolecular Engineering Research Center
-(http://bmerc-www.bu.edu), these modules and utilities grew out of a set we
-have used and worked with for years. CompBio.pm is intended to take a number
-of small, commonly used methods, and make them into a single package. Many
-of the utils are just command line interfaces to these methods. To get the
-most out of this set I highly recomend installing CompBio::DB.pm and either
-importing our databases (ftp://mcclintock.bu.edu/BMERC/mysql/) or adapting
-it to your local needs. Suggestions for improving portability are welcome!
-
-The early versions of this module assumed installation on our local system.
-Although I have tried to correct this in the current version, you may find
-this package requires a litle twidling to get working. I'll try to leave
-comments where I think it is most likely, but hopefully use of a relational
-database and local setting changes in the globals will have
-taken care of it. If not _please_ email me at seanq@darwin.bu.edu with the
-details.
-
-CompBio has a limited API. It expects it's input to
-be in specific formats, as described in each methods docs, and it's output
+CompBio has a limited API. It expects it's input to be in specific
+formats, as described in each methods description, and it's output
 is in a format that makes the most sense to me for that method. It does
 no error checking by and large, so incorrect input could cause bizzare
 behavior and/or a noisy death. If you want a flexible interface with lots
@@ -74,7 +61,13 @@ Other modules available (or that will be available) in the CompBio set are:
 The DB module will only be imediately useful if you import the databases as
 used by us here at the BMERC(ftp://mcclintock.bu.edu/BMERC/mysql/) or develop
 your own on the same basic design scheme. Otherwise I hope you find it useful
-as a source of design ideas for rolling your own.
+as a source of design ideas for rolling your own. Please note however that I
+intend to expand the methods in CompBio/Simple.pm to allow seemless access to
+data through the DB module. Although at no time will including the DB module be
+required for Simple to work, I think that if you have the space for it, you will
+find having the data locally and adding this module (or adapting it to work with
+databases already installed) will have an imense and imediate benifiacial
+impact. It did for us at least! :)
 
 The Profile module was designed to work with our PIMA-II sofware and the
 PIMA modules. The PIMA suite is available for license from Boston University
@@ -157,7 +150,7 @@ sub check_type {
     if ($$seq[0] =~ /^.+?\t[CTUAGctuag]+\*?(\t|$)/) { return "CDNA" }
     elsif ($$seq[0] =~ /^.+?\t[A-Za-z!\.]+\*?(\t|$)/) { return "TBL" }
     elsif ($$seq[0] =~ /^>.+\n[A-Za-z!\.]+\*?$/m) { return "FA" }
-    elsif ($$seq[0] =~ /^[;.*\n]+\S+\n[A-Za-z!\.\*]+1?$/m) { return "IG" }
+    elsif ($$seq[0] =~ /^(;.*\n)+\S+\n[A-Za-z!\.\*]+1?$/m) { return "IG" }
     elsif ($$seq[0] =~ /^[CTUAGMRWSYKVHDBXNctuagmrwsykvhdbxn]+\*?$/m) { return "RAW" }
     else { return "UNKNOWN" }
 } # check_type
@@ -171,6 +164,9 @@ C<$aref_faseqs = $cbc->tbl_to_fa(\@seqdat,%params);>
 
 Each index in the @seqdat array must contain entire record (loci\tsequence) for
 single sequence. Return is an array reference, still one sequence per index.
+
+Extra data fields in the table format will be added to the annotation line (>)
+in the fasta output.
 
 =cut
 sub tbl_to_fa {
@@ -186,10 +182,11 @@ sub tbl_to_fa {
     foreach (@$aref_seqs) {
         chomp;
         my @fields = split(/\t/);
-        my $str = ">$fields[0]\n";
+        my $str = ">$fields[0]";
+        if (@fields > 2) { $str .= " " . join(" ",@fields[2 .. $#fields]) }
         # generate fasta sequence lines at 80 char per line (including newline)
         my $tmpl = "a79" x ((length($fields[1])/79) + 1);
-        $str .= join("\n",(unpack($tmpl,$fields[1])));
+        $str .= "\n" . join("\n",(unpack($tmpl,$fields[1])));
         $str =~ s/\n$//;
         push(@ret,$str);
     } # foreach submitted sequence
@@ -203,6 +200,9 @@ Converts a sequence in table (tab delimited) format to .ig format. Accepts
 sequences in a referenced array, one record per index.
 
 C<$aref_igseqs = $cbc->tbl_to_ig(\@tbl_seqs,%params);>
+
+Extra data fields in the table format will be placed on a single comment
+line (;) in the ig output.
 
 =cut
 sub tbl_to_ig {
@@ -218,7 +218,9 @@ sub tbl_to_ig {
     foreach (@$aref_seqs) {
         chomp;
         my @fields = split(/\t/);
-        my $str = ";\n;\n$fields[0]\n"; # seperators, comment & id lines
+        my $str = ";";
+        if (@fields > 2) { $str .= "\n;" . join(" ",@fields[2 .. $#fields]) }
+        $str .= "\n$fields[0]\n"; # seperators, comment & id lines
         $fields[1] .= "1";
         my $tmpl = "a79" x ((length($fields[1])/79) + 1);
         $str .= join("\n",(unpack($tmpl,$fields[1])));
@@ -237,6 +239,14 @@ contained in a referenced array.
 
 C<$aref_faseqs = $cbc->fa_to_tbl(\@fa_seq);>
 
+Extra data fields in the fasta format will be placed as extra tab delimited
+values after the sequence record.
+
+Options:
+
+CLEAN: Reduces signifier to the first strech of non white space characters
+found at least 4 characters long with no of the characters (| \ ? / ! *)
+
 =cut
 sub fa_to_tbl {
     my $self = shift;
@@ -251,17 +261,21 @@ sub fa_to_tbl {
     # traverse referenced array and convert
     foreach (@$aref_seqs) {
         chomp;
-        my $tbl = "";
+        my $tbl = my $rem = "";
         
     	foreach (split(/[\n\r]+/)) {
-    	    if (/^\s*>\s*([^\t]+)/) {
+    	    if (/^\s*>(\S+)\s*(.*)/) {
                 my $sig = $1;
+                $rem = $2;
                 # maybe a better keyword than CLEAN?
-                # Also, may want to add to bad_characters in []
-                if ($params{'CLEAN'} && $sig =~ /(\S+)/) {
-                    $sig = $1;
-                } # if user want and we can, get a better id
-                elsif ($params{'REALCLEAN'} && $sig =~ /(\S{3,})[\|\!*\-]/) {
+                if (s/^(\S+\|\S+) /$1\t/) {
+                    s/>\w+\|(\d+)\|//;
+                    $sig = $1 if $1;
+                    s/\|+/\t/g;
+                    $rem = $_;
+                } # turn those annoying genbank pipes into tabs
+                
+                if ($params{'CLEAN'} && $sig =~ /([^\s\|\\?\/!*]{4,})/) {
                     $sig = $1;
                 } # elsif
     	        $tbl .= "$sig\t";
@@ -272,6 +286,7 @@ sub fa_to_tbl {
     	        $tbl .= $_;
     	    } # else
         } # foreach line in seqrec
+        $tbl .= "\t$rem" if $rem;
         push(@ret,$tbl);
     } # foreach seqrec
 
@@ -285,6 +300,9 @@ record per index. This method returns the sequence(s) in table(.tbl) format
 contained in a referenced array.
 
 C<$aref_igseqs = $cbc->ig_to_tbl(\@fa_seq);>
+
+Extra comment lines in the ig format will be placed as extra tab delimited
+values after the sequence record.
 
 =cut
 sub ig_to_tbl {
@@ -300,10 +318,14 @@ sub ig_to_tbl {
     foreach (@$aref_seqs) { # traverse referenced array and convert
     	chomp;
         my $tbl = "";
+        my @comments = ();
         
     	foreach (split(/[\n\r]+/)) {
-            next if /^;/;
-            if (! $tbl) {
+            next if /^;\s*$/;
+            if (/^;\s*(.+)$/) {
+                push(@comments,$1);
+            } # get comments
+            elsif (! $tbl) {
                 /^\s*([^\t]+)/;
                 my $sig = $1;
                 # maybe a better keyword than CLEAN?
@@ -321,37 +343,38 @@ sub ig_to_tbl {
             } # we assume its a sequence line
         } # foreach line in seqrec
         $tbl =~ s/1$//;
+        $tbl = join("\t",($tbl,@comments));
+        $tbl =~ s/\s+$//;
         push(@ret,$tbl);
     } # foreach seqrec
 
     return \@ret;
 } # ig_to_tbl
 
-=head2 dna_to_protein
+=head2 dna_to_aa
 
 Converts a dna sequence, containing no whitespace, submited as a scalar reference,
 to the amino acid residues as coded by the standard 'universal' genetic code.
 Return is a reference to a scalar. dna sequence may contain standard special
-characters (i.e. R,S,B,N, ect.). Default behavior is to trim a final stop, if
-present, and to substitute an M for an I or L in the first position - this is
-usually correct when translating whole sequences from a coding DNA sequence.
-A hash containing optional parameters may be passed as the second argument.
+characters (i.e. R,S,B,N, ect.).
 
-Options allowed are:
+C<$aa = dna_to_aa(\$dna_seq,%params);>
+
+Options:
 
 C: Set to a true value to indicate dna should be converted to it's compliment
 before translation.
 
 ALTCODE: A reference to a hash containing alternate coding keys where the value 
-is the new aa to code for. Stop codons are represented by ".".
+is the new aa to code for. Stop codons are represented by ".". Multiple
+allowable values for the final dna in the codon may be provided in the
+format AT[TCA].
 
 SEQFIX: Set to true to alter first position, making V or L an M, and
 removing stop in last position.
 
-C<$aa = dna_to_protein(\$dna_seq,%params);>
-
 =cut
-sub dna_to_protein {
+sub dna_to_aa {
     my $self = shift;
     my $sref_seq = (ref($self) && ref($self) ne "SCALAR") ? shift : $self;
     _help() if (! ref($sref_seq) && $sref_seq eq "help");
@@ -392,7 +415,7 @@ sub dna_to_protein {
     } # clean up ends for use as aa seq
     
     return \$ret;
-} # dna_to_protein
+} # dna_to_aa
 
 =head2 complement
 
@@ -421,14 +444,29 @@ sub complement {
 
 =head2 six_frame
 
-Converts a submitted dna sequence into all 6 frame translations to aa. Arguments are the file
-containing the raw dna sequence (in .raw format! no whitesace), the id to prefix the output,
-the min length of amino acid sequences to be recorded, and the file to output. Note that the output
-file will be truncated. Output id's have strand, frame, start and stop positions encoded.
+Converts a submitted dna sequence into all 6 frame translations to aa. Value
+submitted may be a reference to a scalar containing the dna or a filename.
+Either way dna must be in RAW(.raw) format (Not whitespace within sequence,
+only one newline allowed at end of record). Output id's have start and stop
+positions encoded; if first value is larger, translated from anti-sense.
 
 C<$result = six_frame($raw_file,$id,$seq_len,$out_file);>
 	
-Note: six_frame returns a result of 0 on success, or an error message on failure.
+Options:
+
+ALTCODE: A reference to a hash containing alternate coding keys where the value 
+is the new aa to code for. Stop codons are represented by ".". Multiple
+allowable values for the final dna in the codon may be provided in the
+format AT[TCA].
+
+ID: Prefix for translated segment identifiers, default is SixFrame.
+
+SEQLEN: Minimum length of aa sequence to return, default is 10.
+
+OUTPUT: A filename to pipe results to. This is recomended for large dna
+sequences such as large contigs or whole chromosomes, otherwise results are
+stored in memory until process complete. If the value of OUTFILE is STDOUT
+results will be sent directly to standard out.
 
 =cut
 sub six_frame {
@@ -442,11 +480,20 @@ sub six_frame {
     my %params = @_ ? @_ : ();
     local $DEBUG = exists $params{DEBUG} ? $params{DEBUG} : $DEBUG;
     my @ret = ();
+    my %AA = aa_hash();
+
+    if($params{'ALTCODE'}) {
+    	while ((my $codon,my $aar) = each %{$params{'ALTCODE'}}) {
+    	    if ($codon =~ /^(\w\w)\[([A-Z]+)\]$/) {
+                foreach (split("",$2)) { $AA{"$1$_"} = $aar }
+            } # multiple options in third position
+            else { $AA{$codon} = $aar }
+    	} # for each alternate codon
+    } # if
 
     $params{'ID'} ||= "SixFrame";
     $params{'SEQLEN'} ||= 10;
     $params{'OUTFILE'} ||= "";
-    my %AA = aa_hash();
     my $fh_out = "";
 
     if ($params{'OUTFILE'} eq "STDOUT") {
@@ -969,21 +1016,36 @@ Original version; created by h2xs 1.20 with options
 
   -AXC -n CompBio
 
+=item 0.20
+
+Begin porting core function code for most initial methods from various
+sources at BMERC. Write protocode and placeholders for what I want in
+initial 'complete' version.
+
 =item 0.44
 
-Copy over most functions from original BMERC::bio (ver 0.74), making improvements to code,
-mostly by removing lingering locale assumptions and (hopefully) improving
-interface, and adding OOP useability .
+Almost everything eneded up being rewritten practically from scratch.
+Removed lingering locale assumptions and (hopefully) improving
+interface (added use of %params mainly).
+Added OOP useability so this module should now work either way.
 
 =item 0.45
 
-Modifications to Simple primarilly
+Modifications to Simple primarilly.
 
 =item 0.451
 
 Fixed faulty statement in MANIFEST.SKIP that excluded Makefile.PL from
 distribution (thanks to Andreas Riechert for pointing this out to me almost
 imediately).
+
+=item 0.46
+
+Added some documentation, mostly on options.
+Added the ALTCODE option to six_frame.
+Finished modifying tbl_to* converters to make a pass at handeling extra
+data feilds from table format and changing *_to_tbl converters to keep
+extra data besides id in extra fields in table format.
 
 =back
 
@@ -1028,16 +1090,13 @@ type interface, returning the correct object ($cbs = CompBio->Simple("new")
 or some such)? I think that would be far more desirable than _having_ to
 use a bunch of modules all in the CompBio namespace.
 
-fasta and ig to tbl methods should place extra data in optional fields in new
-table specs
-
-tbl_to_ig needs to check for extra fields in new table format and place fields
-in ig's optional comment lines.
-
 _error (all packages) needs to correctly report line where error occured.
 Can this be done through caller or do I need to pass manually?
 
 =head1 COPYRIGHT
+
+Developed at the BioMolecular Engineering Research Center at Boston
+University under the NHLBI's Programs for Genomic Applications grant.
 
 Copyright Sean Quinlan, Trustees of Boston University 2000-2001.
 

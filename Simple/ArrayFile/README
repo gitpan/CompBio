@@ -1,0 +1,132 @@
+
+
+
+User Contributed Perl Documentation                  ArrayFile(3)
+
+
+
+NNNNAAAAMMMMEEEE
+     CompBio::Simple::ArrayFile - provide access to a sequence
+     file through an array
+
+SSSSYYYYNNNNOOOOPPPPSSSSIIIISSSS
+       use CompBio::Simple::ArrayFile;
+       tie @$AR_seqs,"CompBio::Simple::ArrayFile","format";
+       # where format is as defined in CompBio::check_type
+
+
+DDDDEEEESSSSCCCCRRRRIIIIPPPPTTTTIIIIOOOONNNN
+     This allows an input file of sequence data to be tied to the
+     array returned by CompBio::Simple::_munge_seq_input. It
+     provides a way to have all the processing code use one
+     format without needing to read the whole file into memory.
+
+     Please check your favorite perl reference for more
+     information on the tie function.
+
+     This tie module provides only three methods, the TIEARRAY
+     (basically a new in OO syntax) to create the tied array,
+     FETCH to read a sequence record from the file, and DESTROY
+     which basically just closes the filehandle;
+
+     EEEEXXXXPPPPOOOORRRRTTTT
+
+     None by default.
+
+HHHHIIIISSSSTTTTOOOORRRRYYYY
+     0.01    Original version; created by h2xs 1.20 with options
+
+               -AXC -n CompBio::Simple::ArrayFile
+
+
+TTTTOOOO DDDDOOOO
+     Take a close look at whether or not the method for adding
+     sequences should be developed.
+
+     Consider ways to emulate array slices and specific index
+     selects. Just added random member testing for check_type and
+     I'm sure this will break when used there.
+
+CCCCOOOOPPPPYYYYRRRRIIIIGGGGHHHHTTTT
+     Developed at the BioMolecular Engineering Research Center at
+     Boston University under the NHLBI's Programs for Genomic
+     Applications grant.
+
+     Copyright Sean Quinlan, Trustees of Boston University
+     2000-2001.
+
+     All rights reserved. This program is free software; you can
+     redistribute it and/or modify it under the same terms as
+
+
+
+2001-09-14          Last change: perl v5.6.0                    1
+
+
+
+
+
+
+User Contributed Perl Documentation                  ArrayFile(3)
+
+
+
+     Perl itself.
+
+AAAAUUUUTTTTHHHHOOOORRRR
+     Sean Quinlan, seanq@darwin.bu.edu
+
+     Please email me with any changes you make or suggestions for
+     changes/additions.  Latest version is available under
+     ftp://mcclintock.bu.edu/BMERC/perl/.
+
+     Thank you!
+
+SSSSEEEEEEEE AAAALLLLSSSSOOOO
+     _p_e_r_l(1), _C_o_m_p_B_i_o(3), the CompBio::Simple manpage.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+2001-09-14          Last change: perl v5.6.0                    2
+
+
+

@@ -7,12 +7,35 @@ use Carp;
 
 require Exporter;
 
-#our @ISA = qw(Exporter);
-#our %EXPORT_TAGS = ( 'all' => [ qw( ) ] );
-#our @EXPORT_OK = ( @{ $EXPORT_TAGS{'all'} } );
-#our @EXPORT = qw( );
+our $VERSION = '0.20';
 
-our $VERSION = '0.01';
+=head1 NAME
+
+CompBio::Simple::ArrayFile - provide access to a sequence file through an array
+
+=head1 SYNOPSIS
+
+  use CompBio::Simple::ArrayFile;
+  tie @$AR_seqs,"CompBio::Simple::ArrayFile","format";
+  # where format is as defined in CompBio::check_type
+
+=head1 DESCRIPTION
+
+This allows an input file of sequence data to be tied to the array returned by
+CompBio::Simple::_munge_seq_input. It provides a way to have all the processing
+code use one format without needing to read the whole file into memory.
+
+Please check your favorite perl reference for more information on the tie function.
+
+This tie module provides only three methods, the TIEARRAY (basically a new in OO
+syntax) to create the tied array, FETCH to read a sequence record from the file,
+and DESTROY which basically just closes the filehandle;
+
+=head2 EXPORT
+
+None by default.
+
+=cut
 
 sub TIEARRAY {
     my $proto = shift;
@@ -84,29 +107,6 @@ sub DESTROY {
 
 1;
 __END__
-# Below is stub documentation for your module. You better edit it!
-
-=head1 NAME
-
-CompBio::Simple::ArrayFile - Perl extension for blah blah blah
-
-=head1 SYNOPSIS
-
-  use CompBio::Simple::ArrayFile;
-  blah blah blah
-
-=head1 DESCRIPTION
-
-Stub documentation for CompBio::Simple::ArrayFile, created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
-
-Blah blah blah.
-
-=head2 EXPORT
-
-None by default.
-
 
 =head1 HISTORY
 
@@ -116,19 +116,38 @@ None by default.
 
 Original version; created by h2xs 1.20 with options
 
-  -AXC
-	-n
-	CompBio::Simple::ArrayFile
+  -AXC -n CompBio::Simple::ArrayFile
 
-=back
+=head1 TO DO
 
+Take a close look at whether or not the method for adding sequences should
+be developed.
+
+Consider ways to emulate array slices and specific index selects. Just
+added random member testing for check_type and I'm sure this will break
+when used there.
+
+=head1 COPYRIGHT
+
+Developed at the BioMolecular Engineering Research Center at Boston
+University under the NHLBI's Programs for Genomic Applications grant.
+
+Copyright Sean Quinlan, Trustees of Boston University 2000-2001.
+
+All rights reserved. This program is free software; you can redistribute it
+and/or modify it under the same terms as Perl itself.
 
 =head1 AUTHOR
 
-A. U. Thor, a.u.thor@a.galaxy.far.far.away
+Sean Quinlan, seanq@darwin.bu.edu
+
+Please email me with any changes you make or suggestions for changes/additions.
+Latest version is available under ftp://mcclintock.bu.edu/BMERC/perl/.
+
+Thank you!
 
 =head1 SEE ALSO
 
-perl(1).
+L<perl(1)>, L<CompBio(3)>, L<CompBio::Simple>.
 
 =cut

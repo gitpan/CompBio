@@ -12,7 +12,22 @@ NNNNAAAAMMMMEEEE
 SSSSYYYYNNNNOOOOPPPPSSSSIIIISSSS
      use CompBio::Simple;
 
-     my $cbs = CompBio::Simple->new;
+     `my $cbs = CompBio::Simple-'new;>
+
+     `my $fa_seq = $cbs-'tbl_to_fa($tblseq,%params);>
+
+     $tblseq could be either scalar, array by reference, 2d array
+     by reference, or a hash by reference; return data type is
+     same as submitted (see RETURN_TYPE option under general
+     method description). Scalar may be either sequence records
+     (one record per line), or a filename. Array's should contain
+     an entire sequence record (loci\tsequence) in each indexed
+     position. 2D arrays should be ids in the first column,
+     sequences in the second, such that $array[2][1] would be the
+     aa sequence for the third record. Hash's should have the
+     loci as the key, and only the sequence as the value.
+     Newlines at the ends of sequences in array and hash types
+     are unneccisarry and will be stripped off
 
 DDDDEEEESSSSCCCCRRRRIIIIPPPPTTTTIIIIOOOONNNN
      Originally developed at the BioMolecular Engineering
@@ -36,31 +51,16 @@ MMMMeeeetttthhhhooooddddssss
      describe the key required arguments and will also indicate
      which arg is the optional %params hash. %params can be
      passed as a hash or reference. Also, most arguments that
-     handle sequences or ids accept input as scalar, arrays (by
-     reference) or hashes (by reference).  If I miss documenting
-     it, try it just in case. Unless a parameter option is
-     available to signify otherwise, I assume 'doing the right
-     thing' is to return the same type of data construct as
-     recieved.
-
-     nnnneeeewwww
-
-     Construct an object for invoking methods in CompBio::Simple.
-
-     hhhheeeellllpppp
-
-     Quits current application and uses perldoc to display the
-     POD.
-
-     ttttbbbbllll____ttttoooo____ffffaaaa
-
-     Converts a sequence record in table (tab delimited, usually
-     .tbl file extension) format to fasta format.
+     handle sequences or ids accept input as scalar (as is or by
+     reference), array (by reference), 2D array (by reference),
+     or hash (by reference). scalar may be a filename. If I miss
+     documenting it, try it just in case. Unless a parameter
+     option is passed to signify otherwise, I assume 'doing the
+     right thing' is to return the same type of data construct as
 
 
 
-
-2001-09-11          Last change: perl v5.6.0                    1
+2001-09-14          Last change: perl v5.6.0                    1
 
 
 
@@ -71,22 +71,270 @@ User Contributed Perl Documentation                     Simple(3)
 
 
 
-             C<$fa_seq = $cbs->tbl_to_fa($tblseq,%params);>
+     recieved. The prefered method for submitting sequence data
+     is as a reference to an array, each index containing one
+     sequence record (and that preferably in table format).
 
-     $seqdat can be either scalar, array by reference, 2d array
-     by reference, or a hash by reference; return data type is
-     same as submitted. Scalar may be either sequence records
-     (one record per line), or a filename. Array's should contain
-     an entire sequence record (loci\tsequence) in each indexed
-     position. 2D arrays should be ids in the first column,
-     sequences in the second, such that $array[2][1] would be the
-     aa sequence for the third record. Hash's should have the
-     loci as the key, and only the sequence as the value.
+     All methods in Simple.pm accept a %params hash as the final
+     argument. Options available for a specific method are
+     described in that methods section. Options that can be
+     defined for any (well, more than one at least) method are:
+
+     RETURN_TYPE <type>
+         Value from: (SCALAR,REFSCALAR,ARRAY,2D,HASH)
+
+         This option overrides the default behavior of returning
+         data in the same format submitted and return data in the
+         manner specified.
+
+     OUTFILE <filename>
+         Opens up <filename> for writing. Results of operation
+         are written to file and 0 is returned.
+
+     DEBUG <value>
+         A numeric value supplied with this option sets the debug
+         level for the specific method call only. Does not affect
+         the 'global' debug level set when creating a new
+         CompBio::Simple object.
+
+     Also note that the params hash is shared by all methods
+     called by the method invoked, so params for those internal
+     methods could also be added. The most notable case of where
+     this might be used is that check_type is actually called by
+     almost every other method (Simple tries to never assume or
+     restrict what sequence format is going to be used). So
+     check_type's CONFIDENCE option could be included to affect
+     it's behavior.
+
+     nnnneeeewwww
+
+     Construct an object for invoking methods in CompBio::Simple.
+
+     Options:
+
+     DEBUG: Sets default debug level for all method calls using
+     this object. Can be overridden for a specific operation by
+     defining a DEBUG option with the method call. Higher integer
+     values indicate more output. 1 and 2 are good enough
+     generally, 3 and higher can produce overwhelming amounts of
+     output, 4 or higher will also cause the program to die where
+     it would otherwise warn.
+
+
+
+
+
+
+
+2001-09-14          Last change: perl v5.6.0                    2
+
+
+
+
+
+
+User Contributed Perl Documentation                     Simple(3)
+
+
+
+     cccchhhheeeecccckkkk____ttttyyyyppppeeee
+
+     Checks a given sequence or set of sequences for it's type.
+     Currently groks fasta(.fa), table(.tbl), raw genome(.raw),
+     intelligenics[?](.ig) and coding dna sequence(.cdna) types.
+     Each index of the referenced array should be an entire
+     sequence record. * It is however nnnnooootttt recomended that you
+     load up an entire raw genome into memory to do this test -
+     see the perlfunc read entry elsewhere in this document *
+
+     `$type = check_type(\@seqs,%parameters);'
+
+     Possible return types are CDNA, TBL, FA, IG, RAW and
+     UNKNOWN.
+
+     OPTION:
+
+     CONFIDENCE: Set this parameter to an positive integer
+     representing the number of checks against your sequence set
+     you would like performed. The default value is 3, however if
+     only one or two sequences are in your set only one check
+     will be performed.  If CONFIDENCE is set to a value equal to
+     or greater than the number of sequences in your set, it will
+     be reset to a value approx. 66% of the number of sequences
+     in your set (a _v_e_r_y high level of confidence).
+
+     Check type will then make CONFIDENCE # of tests on youe
+     sequence set, randomly selecting 2 members into a subset and
+     checking the format. If more than one format type guesses
+     check_type will throw an exception reporting all the types
+     found.
+
+     ttttbbbbllll____ttttoooo____ffffaaaa
+
+     Converts sequence records in table (tab delimited, usually
+     .tbl file extension) format to fasta format.
+
+     `$fa_seq = $cbs-'tbl_to_fa($tblseq,%params);>
+
+     Extra data fields in the table format will be added to the
+     annotation line (>) in the fasta output.
+
+     ttttbbbbllll____ttttoooo____iiiigggg
+
+     Converts sequence records in table (tab delimited) format to
+     .ig format.
+
+     `$aref_igseqs = $cbc-'tbl_to_ig(\@tbl_seqs,%params);>
+
+     Extra data fields in the table format will be placed on a
+     single comment line (;) in the ig output.
+
+
+
+
+2001-09-14          Last change: perl v5.6.0                    3
+
+
+
+
+
+
+User Contributed Perl Documentation                     Simple(3)
+
+
+
+     ffffaaaa____ttttoooo____ttttbbbbllll
+
+     Converts sequence records in fasta format to table format.
+
+     `$aref_faseqs = $cbc-'fa_to_tbl(\@fa_seq);>
+
+     Extra data in the fasta format will be placed in an extra
+     tab delimited field after the sequence record.
+
+     Options:
+
+     CLEAN: Reduces signifier to the first strech of non white
+     space characters found at least 4 characters long with none
+     of the characters (| \ ? / ! *)
+
+     iiiigggg____ttttoooo____ttttbbbbllll
+
+     Accepts ig format sequences in a referenced array, one
+     complete sequence record per index. This method returns the
+     _s_e_q_u_e_n_c_e(s) in table(.tbl) format contained in a referenced
+     array.
+
+     `$aref_igseqs = $cbc-'ig_to_tbl(\@fa_seq);>
+
+     Extra comment lines in the ig format will be placed as extra
+     tab delimited values after the sequence record.
+
+     ddddnnnnaaaa____ttttoooo____aaaaaaaa
+
+     Convert dna sequences, containing no whitespace, to the
+     amino acid residues as coded by the standard 'universal'
+     genetic code. dna sequence may contain standard special
+     characters (i.e. R,S,B,N, ect.).
+
+     `$aa = dna_to_aa(\$dna_seq,%params);'
+
+     Options:
+
+     C: Set to a true value to indicate dna should be converted
+     to it's compliment before translation.
+
+     ALTCODE: A reference to a hash containing alternate coding
+     keys where the value is the new aa to code for. Stop codons
+     are represented by ".".
+
+     SEQFIX: Set to true to alter first position, making V or L
+     an M, and removing stop in last position.
+
+     ccccoooommmmpppplllleeeemmmmeeeennnntttt
+
+     Converts dna to it's complimentary strand. DNA sequence is
+     submitted as scalar by reference. There is no return as
+
+
+
+2001-09-14          Last change: perl v5.6.0                    4
+
+
+
+
+
+
+User Contributed Perl Documentation                     Simple(3)
+
+
+
+     sequence is modified. To maintain original sequence, send a
+     reference to a copy.
+
+     `compliment(\$dna);'
+
+     ssssiiiixxxx____ffffrrrraaaammmmeeee
+
+     `$result = six_frame($raw_file,$id,$seq_len,$out_file);'
+
+     Converts a submitted dna sequence into all 6 frame
+     translations to aa.  Output id's have start and stop
+     positions encoded; if first value is larger, translated from
+     anti-sense.
+
+     Options:
+
+     ALTCODE: A reference to a hash containing alternate coding
+     keys where the value is the new aa to code for. Stop codons
+     are represented by ".". Multiple allowable values for the
+     final dna in the codon may be provided in the format
+     AT[TCA].
+
+     ID: Prefix for translated segment identifiers, default is
+     SixFrame.
+
+     SEQLEN: Minimum length of aa sequence to return, default is
+     10.
+
+     OUTPUT: A filename to pipe results to. This is recomended
+     for large dna sequences such as large contigs or whole
+     chromosomes, otherwise results are stored in memory until
+     process complete ** this includes the use of the general
+     method option of OUTFILE ** . If the value of OUTFILE is
+     STDOUT results will be sent directly to standard out.
+
+     AAAAAAAA____HHHHAAAASSSSHHHH
+
+     Creates a hash table with amino acid lookups by codon.
+     Includes all cases where even an alternate na code (such as
+     M for A or C) would return an unambiguos aa.  Also
+     consistent with the complement method in this package, ie,
+     lower cases in some contexts, for ease of use with
+     six_frame.
+
+      C<%aa_hash = aa_hash;>
+
 
 EEEEXXXXPPPPOOOORRRRTTTT
      None by default.
 
 HHHHIIIISSSSTTTTOOOORRRRYYYY
+
+
+
+
+2001-09-14          Last change: perl v5.6.0                    5
+
+
+
+
+
+
+User Contributed Perl Documentation                     Simple(3)
+
+
+
      0.01    Original version; created by h2xs 1.20 with options
 
                -AXC -n CompBio::Simple
@@ -96,22 +344,30 @@ HHHHIIIISSSSTTTTOOOORRRRYYYY
              Developed the _munge stuff.
 
      0.43    Brought tests up to same point as in CompBio. Added
-             six_frame. Moved the data handeling for
-             dna_to_protein to own _munge type internal method.
-             Added RETURN_TYPE parameter to _munge input so user
-             can pick. Created the CompBio::Simple::ArrayFile
-             module to TIE a sequence file to an array. Added
-             six_frame using same _munge as dna_to_protein.
+             six_frame. Moved the data handeling for dna_to_aa to
+             own _munge type internal method. Added RETURN_TYPE
+             parameter to _munge input so user can pick. Created
+             the CompBio::Simple::ArrayFile module to TIE a
+             sequence file to an array. Added six_frame using
+             same array processing _munge as dna_to_aa.
+
+     0.44    Made seriouse attempt to get the docs caught up.
+             Added random sampling and CONFIDENCE to check_type.
 
 TTTTOOOO DDDDOOOO
      _munge_seq_imput needs to also detect when it just has a
      list of loci and hand request to DB to attempy to fulfil,
      and/or accept a DB param.
 
-     check_type invoked from here should make a few type checks
-     with random samples from the dataset when possible.
+     Look at using a tie type method similar to ArrayFile.pm for
+     fetching data from a database - simply throwing an exception
+     if no db module provided (eval use?).
 
 CCCCOOOOPPPPYYYYRRRRIIIIGGGGHHHHTTTT
+     Developed at the BioMolecular Engineering Research Center at
+     Boston University under the NHLBI's Programs for Genomic
+     Applications grant.
+
      Copyright Sean Quinlan, Trustees of Boston University
      2000-2001.
 
@@ -121,21 +377,6 @@ CCCCOOOOPPPPYYYYRRRRIIIIGGGGHHHHTTTT
 
 AAAAUUUUTTTTHHHHOOOORRRR
      Sean Quinlan, seanq@darwin.bu.edu
-
-
-
-
-
-2001-09-11          Last change: perl v5.6.0                    2
-
-
-
-
-
-
-User Contributed Perl Documentation                     Simple(3)
-
-
 
      Please email me with any changes you make or suggestions for
      changes/additions.  Latest version is available under
@@ -149,50 +390,7 @@ SSSSEEEEEEEE AAAALLLLSSSSOOOO
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-2001-09-11          Last change: perl v5.6.0                    3
+2001-09-14          Last change: perl v5.6.0                    6
 
 
 

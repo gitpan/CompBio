@@ -10,11 +10,10 @@ use CompBio::Simple::ArrayFile;
 our @ISA = qw(Exporter);
 use vars qw($AUTOLOAD);
 
-our $VERSION = '0.43';
+our $VERSION = '0.44';
 our $DEBUG = 0;
 
 our %Auto_method = (
-    check_type => 1,
     tbl_to_fa => 1,
     tbl_to_ig => 1,
     fa_to_tbl => 1,
@@ -30,7 +29,19 @@ bioinformatics.
 
 use CompBio::Simple;
 
-my $cbs = CompBio::Simple->new;
+C<my $cbs = CompBio::Simple->new;>
+
+C<my $fa_seq = $cbs->tbl_to_fa($tblseq,%params);>
+
+$tblseq could be either scalar, array by reference, 2d array by reference, or a
+hash by reference; return data type is same as submitted (see RETURN_TYPE option
+under general method description). Scalar may be either sequence
+records (one record per line), or a filename. Array's should contain an entire
+sequence record (loci\tsequence) in each indexed position. 2D arrays should be
+ids in the first column, sequences in the second, such that $array[2][1] would
+be the aa sequence for the third record. Hash's should have the loci as the key,
+and only the sequence as the value. Newlines at the ends of sequences in array and
+hash types are unneccisarry and will be stripped off 
 
 =head1 DESCRIPTION
 
@@ -53,18 +64,58 @@ Thanks!
 A couple of important general notes. All methods will describe the key required
 arguments and will also indicate which arg is the optional %params hash. %params
 can be passed as a hash or reference. Also, most arguments that handle sequences
-or ids accept input as scalar, arrays (by reference) or hashes (by reference).
-If I miss documenting it, try it just in case. Unless a parameter option is
-available to signify otherwise, I assume 'doing the right thing' is to return the
-same type of data construct as recieved.
+or ids accept input as scalar (as is or by reference), array (by reference),
+2D array (by reference), or hash (by reference). scalar may be a filename. 
+If I miss documenting it, try it just in case. Unless a parameter
+option is passed to signify otherwise, I assume 'doing the right thing' is to
+return the same type of data construct as recieved. The prefered method for
+submitting sequence data is as a reference to an array, each index containing
+one sequence record (and that preferably in table format).
 
-Sorry, not all of the methods available trough Simple.pm have been documented.
-See CompBio.pm for details on the basic usage and purpose of the methods. I'm
-planning on finishing up the docs to the current state for 0.46.
+All methods in Simple.pm accept a %params hash as the final argument. Options
+available for a specific method are described in that methods section. Options
+that can be defined for any (well, more than one at least) method are:
+
+=over 4
+
+=item RETURN_TYPE <type>
+
+Value from: (SCALAR,REFSCALAR,ARRAY,2D,HASH)
+
+This option overrides the default behavior of returning data in the same format
+submitted and return data in the manner specified.
+
+=item OUTFILE <filename>
+
+Opens up <filename> for writing. Results of operation are written to file and 0
+is returned.
+
+=item DEBUG <value>
+
+A numeric value supplied with this option sets the debug level for the specific
+method call only. Does not affect the 'global' debug level set when creating a
+new CompBio::Simple object.
+
+=back
+
+Also note that the params hash is shared by all methods called by the method
+invoked, so params for those internal methods could also be added. The most
+notable case of where this might be used is that check_type is actually called
+by almost every other method (Simple tries to never assume or restrict what
+sequence format is going to be used). So check_type's CONFIDENCE option could
+be included to affect it's behavior.
 
 =head2 new
 
 Construct an object for invoking methods in CompBio::Simple.
+
+Options:
+
+DEBUG: Sets default debug level for all method calls using this object. Can
+be overridden for a specific operation by defining a DEBUG option with the
+method call. Higher integer values indicate more output. 1 and 2 are good
+enough generally, 3 and higher can produce overwhelming amounts of output, 4
+or higher will also cause the program to die where it would otherwise warn.
 
 =cut
 sub new($%) {
@@ -82,31 +133,53 @@ sub new($%) {
     return bless ($self,$class);
 } # new
 
-=head2 help
+# maybe should explicitly perldoc module instead?
+=head2 _help
 
-Quits current application and uses perldoc to display the POD.
+Quits current application and uses perldoc to display the POD within it.
 
 =cut
 sub _help() {
     exec 'perldoc $0';
 } # perldoc cheat
 
-=head2 tbl_to_fa
+sub check_type {
+    my ($self,$AR_seqs,$return_type,%params) = _munge_seq_input(@_);
+        
+    local $DEBUG = exists $params{DEBUG} ? $params{DEBUG} : $DEBUG;
+    if ($DEBUG >= 3) { foreach my $k (keys %$self) { print "$k\t$$self{$k}\n" } }
+    print ref($AR_seqs),"<- ref?\n" if $DEBUG >= 2;
+    if ($DEBUG >= 2) { foreach my $k (keys %params) { print "$k\t$params{$k}\n" } }
+    
+    $params{CONFIDENCE} ||= 3;
+    
+    unless ($params{CONFIDENCE} > 0) {
+        _error("check_type can't check type 0 or fewer times ($params{CONFIDENCE})");
+        $params{CONFIDENCE} = 3;
+    } # bad call
+    
+    if (@$AR_seqs < 3) {
+       return ($$self{cbc}->check_type($AR_seqs,%params));
+    } # no sense trying a bunch of times for just a sequence or two
+    elsif (@$AR_seqs <= $params{CONFIDENCE}) {
+        $params{CONFIDENCE} = int(@$AR_seqs / 1.5);
+    } # No sense checking more times than there are items
+    
+    my %types = ();
+    foreach (1 .. $params{CONFIDENCE}) {
+        my $AR_test_subset = [(@$AR_seqs[int(rand(@$AR_seqs)),int(rand(@$AR_seqs))])];
+        $types{$$self{cbc}->check_type($AR_test_subset,%params)}++;
+    } # check type on set given # of times
+    
+    my @keys = keys %types;
+    if (@keys > 1) {
+        my $keys = join("\t",@keys);
+        _error("Multiple types found in set using $params{CONFIDENCE} checks:\n$keys",1);
+    } # different types found in set, die
+    
+    return _munge_seq_return($keys[0],$return_type,%params);
+} # check_type
 
-Converts a sequence record in table (tab delimited, usually .tbl file extension)
-format to fasta format.
-
-	C<$fa_seq = $cbs->tbl_to_fa($tblseq,%params);>
-
-$seqdat can be either scalar, array by reference, 2d array by reference, or a
-hash by reference; return data type is same as submitted. Scalar may be either sequence
-records (one record per line), or a filename. Array's should contain an entire
-sequence record (loci\tsequence) in each indexed position. 2D arrays should be
-ids in the first column, sequences in the second, such that $array[2][1] would
-be the aa sequence for the third record. Hash's should have the loci as the key,
-and only the sequence as the value.
-
-=cut
 # man this error checking shit is a pain! :P
 # get the rest of the methods docs from CompBio.pm
 sub six_frame {
@@ -117,7 +190,7 @@ sub six_frame {
     print ref($AR_seqs),"<- ref?\n" if $DEBUG >= 2;
     if ($DEBUG >= 2) { foreach my $k (keys %params) { print "$k\t$params{$k}\n" } }
     
-    my $AR_ret = _munge_array_to_scalar('six_frame',$self,$AR_seqs,%params);
+    my $AR_ret = _munge_array_to_scalar($self,$AR_seqs,%params);
     return _munge_seq_return($AR_ret,$return_type,%params);
 } # six_frame
 
@@ -131,7 +204,7 @@ sub complement {
 # being part of sanity shecking as well. Make sure I structure to fall
 # as fast as possible.
 
-sub dna_to_protein {
+sub dna_to_aa {
     my ($self,$AR_seqs,$return_type,%params) = _munge_seq_input(@_);
     
     local $DEBUG = exists $params{DEBUG} ? $params{DEBUG} : $DEBUG;
@@ -139,15 +212,17 @@ sub dna_to_protein {
     print ref($AR_seqs),"<- ref?\n" if $DEBUG >= 2;
     if ($DEBUG >= 2) { foreach my $k (keys %params) { print "$k\t$params{$k}\n" } }
     
-    my $AR_ret = _munge_array_to_scalar('dna_to_protein',$self,$AR_seqs,%params);
+    my $AR_ret = _munge_array_to_scalar($self,$AR_seqs,%params);
     return _munge_seq_return($AR_ret,$return_type,%params);
-} # dna_to_protein
+} # dna_to_aa
 
 sub _munge_array_to_scalar {
-    my $caller = shift; # can I get this from caller or such?
     my $self = shift;
     my $AR_seqs = shift;
     my %params = @_ ? @_ : ();
+    my $caller = (caller(1))[3]; # fully qualified subroutine
+    print "\t++  Got $caller from caller\n" if $DEBUG >= 3;
+    $caller =~ s/.+:://;
     
     my $guess = $$self{cbc}->check_type($AR_seqs,%params);
     my $AR_ret = [];
@@ -229,7 +304,7 @@ sub _munge_seq_input {
     } # array ref passed in
     elsif ($ref eq "HASH") {
         foreach my $k (keys %$seq) { push(@$AR_seqs,join("\t",($k,$$seq{$k}))) }
-        $return_type = "HASH";
+        $return_type = "|";
     } # if hash submitted
     elsif (! $ref || $ref eq "SCALAR") {
         my $new_ref = "";
@@ -278,7 +353,25 @@ sub _munge_seq_input {
     } # else
 
     if ($params{'OUTFILE'}) {
-        unless (open(OUT,"> $params{OUTFILE}")) {
+        my $cat = ">";
+        if (-s $params{'OUTFILE'}) {
+            print "Requested output file $params{'OUTFILE'} exists, overwrite(1), append(2) or quit(3)? [2] ";
+            chomp(my $input = <STDIN> || 2);
+            if ($input == 2) {
+                $cat = ">>";
+            } # append
+            elsif ($input == 1) { } # just fall out
+            elsif ($input == 3) {
+                _error("User canceled operation.\n");
+                return;
+            } # quit operation
+            else {
+                _error("Don't know what to do given $input\n");
+                return;
+            } # huh?
+        } # if file already exists
+        
+        unless (open(OUT,"$cat $params{OUTFILE}")) {
             _error("Can't open OUT $params{OUTFILE}: $!");
             return;
         } # unless OUT opens
@@ -311,6 +404,8 @@ sub _munge_seq_return {
     elsif ($return_type eq "FILE") {
         my $fh = $params{'FH'}; # print doesn't like this being used directly
         print $fh join("\n",@$AR_seqs) , "\n";
+        close $fh or _error("$params{'OUTFILE'} failed to close properly: $!");
+        return 0;
     } # elsif
     elsif ($return_type eq "HASH") {
         my %h = ();
@@ -351,7 +446,7 @@ sub AUTOLOAD {
 sub _error {
     my $msg = shift || "";
     my $die = shift || "";
-    if (($die && $DEBUG) || $DEBUG >= 4) {
+    if (($die && $DEBUG) || $DEBUG >= 5) {
         confess $msg;
     } # if
     elsif ($die || $DEBUG >= 4) {
@@ -364,7 +459,139 @@ sub _error {
 } # _error - throw $DEBUG dependant exception
 
 1;
+
 __END__
+
+=head2 check_type
+
+Checks a given sequence or set of sequences for it's type. Currently groks 
+fasta(.fa), table(.tbl), raw genome(.raw), intelligenics[?](.ig) and coding
+dna sequence(.cdna) types. Each index of the referenced array should
+be an entire sequence record. * It is however B<not> recomended that you load
+up an entire raw genome into memory to do this test - see L<perlfunc read> *
+
+C<$type = check_type(\@seqs,%parameters);>
+        
+Possible return types are CDNA, TBL, FA, IG, RAW and UNKNOWN.
+
+OPTION:
+
+CONFIDENCE: Set this parameter to an positive integer representing the number of
+checks against your sequence set you would like performed. The default value is 3,
+however if only one or two sequences are in your set only one check will be performed.
+If CONFIDENCE is set to a value equal to or greater than the number of sequences in
+your set, it will be reset to a value approx. 66% of the number of sequences in your
+set (a I<very> high level of confidence).
+
+Check type will then make CONFIDENCE # of tests on youe sequence set, randomly
+selecting 2 members into a subset and checking the format. If more than one format
+type guesses check_type will throw an exception reporting all the types found.
+
+=head2 tbl_to_fa
+
+Converts sequence records in table (tab delimited, usually .tbl file extension)
+format to fasta format.
+
+C<$fa_seq = $cbs->tbl_to_fa($tblseq,%params);>
+
+Extra data fields in the table format will be added to the annotation line (>)
+in the fasta output.
+
+=head2 tbl_to_ig
+
+Converts sequence records in table (tab delimited) format to .ig format.
+
+C<$aref_igseqs = $cbc->tbl_to_ig(\@tbl_seqs,%params);>
+
+Extra data fields in the table format will be placed on a single comment
+line (;) in the ig output.
+
+=head2 fa_to_tbl
+
+Converts sequence records in fasta format to table format.
+
+C<$aref_faseqs = $cbc->fa_to_tbl(\@fa_seq);>
+
+Extra data in the fasta format will be placed in an extra tab delimited
+field after the sequence record.
+
+Options:
+
+CLEAN: Reduces signifier to the first strech of non white space characters
+found at least 4 characters long with none of the characters (| \ ? / ! *)
+
+=head2 ig_to_tbl
+
+Accepts ig format sequences in a referenced array, one complete sequence
+record per index. This method returns the sequence(s) in table(.tbl) format
+contained in a referenced array.
+
+C<$aref_igseqs = $cbc->ig_to_tbl(\@fa_seq);>
+
+Extra comment lines in the ig format will be placed as extra tab delimited
+values after the sequence record.
+
+=head2 dna_to_aa
+
+Convert dna sequences, containing no whitespace, to the amino acid residues
+as coded by the standard 'universal' genetic code. dna sequence may contain
+standard special characters (i.e. R,S,B,N, ect.).
+
+C<$aa = dna_to_aa(\$dna_seq,%params);>
+
+Options:
+
+C: Set to a true value to indicate dna should be converted to it's compliment
+before translation.
+
+ALTCODE: A reference to a hash containing alternate coding keys where the value 
+is the new aa to code for. Stop codons are represented by ".".
+
+SEQFIX: Set to true to alter first position, making V or L an M, and
+removing stop in last position.
+
+=head2 complement
+
+Converts dna to it's complimentary strand. DNA sequence is submitted as scalar
+by reference. There is no return as sequence is modified. To maintain original
+sequence, send a reference to a copy.
+
+C<compliment(\$dna);>
+
+=head2 six_frame
+
+C<$result = six_frame($raw_file,$id,$seq_len,$out_file);>
+	
+Converts a submitted dna sequence into all 6 frame translations to aa.
+Output id's have start and stop positions encoded; if first value is larger,
+translated from anti-sense.
+
+Options:
+
+ALTCODE: A reference to a hash containing alternate coding keys where the value 
+is the new aa to code for. Stop codons are represented by ".". Multiple
+allowable values for the final dna in the codon may be provided in the
+format AT[TCA].
+
+ID: Prefix for translated segment identifiers, default is SixFrame.
+
+SEQLEN: Minimum length of aa sequence to return, default is 10.
+
+OUTPUT: A filename to pipe results to. This is recomended for large dna
+sequences such as large contigs or whole chromosomes, otherwise results are
+stored in memory until process complete ** this includes the use of the general
+method option of OUTFILE ** . If the value of OUTFILE is STDOUT
+results will be sent directly to standard out.
+
+
+=head2 AA_HASH
+
+Creates a hash table with amino acid lookups by codon. Includes all cases where
+even an alternate na code (such as M for A or C) would return an unambiguos aa.
+Also consistent with the complement method in this package, ie, lower cases in
+some contexts, for ease of use with six_frame.
+
+ C<%aa_hash = aa_hash;>
 
 =head1 EXPORT
 
@@ -387,9 +614,15 @@ Got initial set of methods linking to CompBio in. Developed the _munge stuff.
 =item 0.43
 
 Brought tests up to same point as in CompBio. Added six_frame. Moved the data handeling
-for dna_to_protein to own _munge type internal method. Added RETURN_TYPE parameter to
+for dna_to_aa to own _munge type internal method. Added RETURN_TYPE parameter to
 _munge input so user can pick. Created the CompBio::Simple::ArrayFile module to TIE
-a sequence file to an array. Added six_frame using same _munge as dna_to_protein.
+a sequence file to an array. Added six_frame using same array processing _munge as
+dna_to_aa.
+
+=item 0.44
+
+Made seriouse attempt to get the docs caught up.
+Added random sampling and CONFIDENCE to check_type.
 
 =back
 
@@ -398,10 +631,13 @@ a sequence file to an array. Added six_frame using same _munge as dna_to_protein
 _munge_seq_imput needs to also detect when it just has a list of loci and hand
 request to DB to attempy to fulfil, and/or accept a DB param.
 
-check_type invoked from here should make a few type checks with random samples
-from the dataset when possible.
+Look at using a tie type method similar to ArrayFile.pm for fetching data from
+a database - simply throwing an exception if no db module provided (eval use?).
 
 =head1 COPYRIGHT
+
+Developed at the BioMolecular Engineering Research Center at Boston
+University under the NHLBI's Programs for Genomic Applications grant.
 
 Copyright Sean Quinlan, Trustees of Boston University 2000-2001.
 

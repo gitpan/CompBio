@@ -32,16 +32,18 @@ foreach (@na_seqs) {
     my ($id,$naseq) = split;
     my $sref_aaseq = "";
     if ($id =~ /6$|7$|10$/) {
-        $sref_aaseq = $cbc->dna_to_protein(\$naseq,(C => 1,SEQFIX => 1,DEBUG => $DEBUG));
+        $sref_aaseq = $cbc->dna_to_aa(\$naseq,(C => 1,SEQFIX => 1,DEBUG => $DEBUG));
     } # C strand seqs
-    else { $sref_aaseq = $cbc->dna_to_protein(\$naseq,(SEQFIX => 1,DEBUG => $DEBUG)) }
+    else { $sref_aaseq = $cbc->dna_to_aa(\$naseq,(SEQFIX => 1,DEBUG => $DEBUG)) }
     print "$id\t$naseq\n$id\t$$sref_aaseq\n" if $DEBUG > 1;
     next if $$sref_aaseq =~ /\./; # bad translation
     push(@seqs,(join("\t",($id,$$sref_aaseq))));
 } # convert to aa
-ok(@seqs == 10 && $cbc->check_type(\@seqs) eq "TBL","dna_to_protein");
+ok(@seqs == 10 && $cbc->check_type(\@seqs) eq "TBL","dna_to_aa");
 print "$na_seqs[6]\n" if $DEBUG > 1;
 print scalar(@seqs),"\n$seqs[6]\n" if $DEBUG;
+
+$seqs[6] .= "\toptional data 1\ttest2!";
 
 my $AR_faseqs = $cbc->tbl_to_fa(\@seqs);
 ok($AR_faseqs && $cbc->check_type($AR_faseqs) eq "FA","tbl_to_fa");
@@ -65,8 +67,9 @@ ok(@sixframe && $cbc->check_type(\@sixframe) eq "TBL","six_frame");
 @sixframe = split(/\n/,$cbc->six_frame(\$rawseq_c,(ID => "b0007-cdna")));
 my @sfcheck = grep /b0007-cdna_1431_1/, @sixframe;
 $sfcheck[0] =~ s/-cdna_1431_1//;
-print "$sfcheck[0]\n$$AR_tblseqs[6]\n" if $DEBUG;
+$$AR_tblseqs[6] =~ s/\toptional.+//;
 ok(@sfcheck == 1 && $sfcheck[0] eq $$AR_tblseqs[6],"six_frame complement check");
+print "$sfcheck[0]\n$$AR_tblseqs[6]\n" if $DEBUG;
 
 
 __DATA__

@@ -15,52 +15,52 @@ SSSSYYYYNNNNOOOOPPPPSSSSIIIISSSS
      my $cbc = new->CompBio;
 
 DDDDEEEESSSSCCCCRRRRIIIIPPPPTTTTIIIIOOOONNNN
+     The CompBio module set is being developed as a new
+     implimentation of the code base originally developed at the
+     BioMolecular Engineering Research Center (http://bmerc-
+     www.bu.edu). CompBio.pm is intended to take a number of
+     small, commonly used methods, and make them into a single
+     package. Many of the utils are just command line interfaces
+     to the methods contained herein.
+
      The CompBio module set is _not_ intended to replace the
-     bioperl project (http://www.bioperl.org/). Although I
+     bioperl project (http://www.bioperl.org/). Although I do
      welcome suggestions for improving or adding to the methods
      available in these modules, particularly I would love any
      help with things on the TO DO list, these modules are not
      intended to provide the debth that the bioperl suite can
-     provide. These modules grew out of a set we have used at the
-     BMERC(http://bmerc-www.bu.edu) and worked with for years.
-
-     Originally developed at the BioMolecular Engineering
-     Research Center (http://bmerc-www.bu.edu), these modules and
-     utilities grew out of a set we have used and worked with for
-     years. CompBio.pm is intended to take a number of small,
-     commonly used methods, and make them into a single package.
-     Many of the utils are just command line interfaces to these
-     methods. To get the most out of this set I highly recomend
-     installing CompBio::DB.pm and either importing our databases
-     (ftp://mcclintock.bu.edu/BMERC/mysql/) or adapting it to
-     your local needs. Suggestions for improving portability are
-     welcome!
-
-     The early versions of this module assumed installation on
-     our local system.  Although I have tried to correct this in
-     the current version, you may find this package requires a
-     litle twidling to get working. I'll try to leave comments
-     where I think it is most likely, but hopefully use of a
-     relational database and local setting changes in the globals
-     will have taken care of it. If not _please_ email me at
-     seanq@darwin.bu.edu with the details.
+     provide.
 
      CompBio has a limited API. It expects it's input to be in
-     specific formats, as described in each methods docs, and
-     it's output is in a format that makes the most sense to me
-     for that method. It does no error checking by and large, so
-     incorrect input could cause bizzare behavior and/or a noisy
-     death. If you want a flexible interface with lots of error
-     checking and deep levels of vebosity, use the
+     specific formats, as described in each methods description,
+     and it's output is in a format that makes the most sense to
+     me for that method. It does no error checking by and large,
+     so incorrect input could cause bizzare behavior and/or a
+     noisy death. If you want a flexible interface with lots of
+     error checking and deep levels of vebosity, use the
      CompBio::Simple manpage - that's its job.
 
      Thanks!
 
+     Other modules available (or that will be available) in the
+     CompBio set are:
+
+     The DB module will only be imediately useful if you import
+     the databases as used by us here at the
+     BMERC(ftp://mcclintock.bu.edu/BMERC/mysql/) or develop your
+     own on the same basic design scheme. Otherwise I hope you
+     find it useful as a source of design ideas for rolling your
+     own. Please note however that I intend to expand the methods
+     in CompBio/Simple.pm to allow seemless access to data
+     through the DB module. Although at no time will including
+     the DB module be required for Simple to work, I think that
+     if you have the space for it, you will find having the data
+     locally and adding this module (or adapting it to work with
+     databases already installed) will have an imense and
 
 
 
-
-2001-09-11          Last change: perl v5.6.0                    1
+2001-09-14          Last change: perl v5.6.0                    1
 
 
 
@@ -71,15 +71,7 @@ User Contributed Perl Documentation                    CompBio(3)
 
 
 
-     Other modules available (or that will be available) in the
-     CompBio set are:
-
-     The DB module will only be imediately useful if you import
-     the databases as used by us here at the
-     BMERC(ftp://mcclintock.bu.edu/BMERC/mysql/) or develop your
-     own on the same basic design scheme. Otherwise I hope you
-     find it useful as a source of design ideas for rolling your
-     own.
+     imediate benifiacial impact. It did for us at least! :)
 
      The Profile module was designed to work with our PIMA-II
      sofware and the PIMA modules. The PIMA suite is available
@@ -124,9 +116,17 @@ MMMMeeeetttthhhhooooddddssss
      Possible return types are CDNA, TBL, FA, IG, RAW and
      UNKNOWN.
 
+     Be warned, this is intended only as a quick check and only
+     uses as many records as necisarry in the reference provided,
+     stating with the first.  check_type assumes the rest of the
+     records look the same and does not do any kind of deep QA on
+     the set. If you are not sure, invoke check_type with a few
+     random samples from your set, or use the CompBio::Simple
+     manpage, which does that by default.
 
 
-2001-09-11          Last change: perl v5.6.0                    2
+
+2001-09-14          Last change: perl v5.6.0                    2
 
 
 
@@ -136,14 +136,6 @@ MMMMeeeetttthhhhooooddddssss
 User Contributed Perl Documentation                    CompBio(3)
 
 
-
-     Be warned, this is intended only as a quick check and only
-     uses as many records as necisarry in the reference provided,
-     stating with the first.  check_type assumes the rest of the
-     records look the same and does not do any kind of deep QA on
-     the set. If you are not sure, invoke check_type with a few
-     random samples from your set, or use the CompBio::Simple
-     manpage, which does that by default.
 
      ttttbbbbllll____ttttoooo____ffffaaaa
 
@@ -156,6 +148,9 @@ User Contributed Perl Documentation                    CompBio(3)
      (loci\tsequence) for single sequence. Return is an array
      reference, still one sequence per index.
 
+     Extra data fields in the table format will be added to the
+     annotation line (>) in the fasta output.
+
      ttttbbbbllll____ttttoooo____iiiigggg
 
      Converts a sequence in table (tab delimited) format to .ig
@@ -163,6 +158,9 @@ User Contributed Perl Documentation                    CompBio(3)
      per index.
 
      `$aref_igseqs = $cbc-'tbl_to_ig(\@tbl_seqs,%params);>
+
+     Extra data fields in the table format will be placed on a
+     single comment line (;) in the ig output.
 
      ffffaaaa____ttttoooo____ttttbbbbllll
 
@@ -173,6 +171,15 @@ User Contributed Perl Documentation                    CompBio(3)
 
      `$aref_faseqs = $cbc-'fa_to_tbl(\@fa_seq);>
 
+     Extra data fields in the fasta format will be placed as
+     extra tab delimited values after the sequence record.
+
+     Options:
+
+     CLEAN: Reduces signifier to the first strech of non white
+     space characters found at least 4 characters long with no of
+     the characters (| \ ? / ! *)
+
      iiiigggg____ttttoooo____ttttbbbbllll
 
      Accepts ig format sequences in a referenced array, one
@@ -182,17 +189,10 @@ User Contributed Perl Documentation                    CompBio(3)
 
      `$aref_igseqs = $cbc-'ig_to_tbl(\@fa_seq);>
 
-     ddddnnnnaaaa____ttttoooo____pppprrrrooootttteeeeiiiinnnn
-
-     Converts a dna sequence, containing no whitespace, submited
-     as a scalar reference, to the amino acid residues as coded
-     by the standard 'universal' genetic code.  Return is a
-     reference to a scalar. dna sequence may contain standard
-     special characters (i.e. R,S,B,N, ect.). Default behavior is
 
 
 
-2001-09-11          Last change: perl v5.6.0                    3
+2001-09-14          Last change: perl v5.6.0                    3
 
 
 
@@ -203,25 +203,32 @@ User Contributed Perl Documentation                    CompBio(3)
 
 
 
-     to trim a final stop, if present, and to substitute an M for
-     an I or L in the first position - this is usually correct
-     when translating whole sequences from a coding DNA sequence.
-     A hash containing optional parameters may be passed as the
-     second argument.
+     Extra comment lines in the ig format will be placed as extra
+     tab delimited values after the sequence record.
 
-     Options allowed are:
+     ddddnnnnaaaa____ttttoooo____aaaaaaaa
+
+     Converts a dna sequence, containing no whitespace, submited
+     as a scalar reference, to the amino acid residues as coded
+     by the standard 'universal' genetic code.  Return is a
+     reference to a scalar. dna sequence may contain standard
+     special characters (i.e. R,S,B,N, ect.).
+
+     `$aa = dna_to_aa(\$dna_seq,%params);'
+
+     Options:
 
      C: Set to a true value to indicate dna should be converted
      to it's compliment before translation.
 
      ALTCODE: A reference to a hash containing alternate coding
      keys where the value is the new aa to code for. Stop codons
-     are represented by ".".
+     are represented by ".". Multiple allowable values for the
+     final dna in the codon may be provided in the format
+     AT[TCA].
 
      SEQFIX: Set to true to alter first position, making V or L
      an M, and removing stop in last position.
-
-     `$aa = dna_to_protein(\$dna_seq,%params);'
 
      ccccoooommmmpppplllleeeemmmmeeeennnntttt
 
@@ -235,30 +242,23 @@ User Contributed Perl Documentation                    CompBio(3)
      ssssiiiixxxx____ffffrrrraaaammmmeeee
 
      Converts a submitted dna sequence into all 6 frame
-     translations to aa. Arguments are the file containing the
-     raw dna sequence (in .raw format! no whitesace), the id to
-     prefix the output, the min length of amino acid sequences to
-     be recorded, and the file to output. Note that the output
-     file will be truncated. Output id's have strand, frame,
-     start and stop positions encoded.
+     translations to aa. Value submitted may be a reference to a
+     scalar containing the dna or a filename.  Either way dna
+     must be in RAW(.raw) format (Not whitespace within sequence,
+     only one newline allowed at end of record). Output id's have
+     start and stop positions encoded; if first value is larger,
+     translated from anti-sense.
 
      `$result = six_frame($raw_file,$id,$seq_len,$out_file);'
 
-     Note: six_frame returns a result of 0 on success, or an
-     error message on failure.
+     Options:
 
-     wwwwuuuu____bbbbllllaaaasssstttt
-
-     A simple interface to the Washington University distribution
-     of blast. Currently has only been tested with the 2.0a8MP
-     release.
+     ALTCODE: A reference to a hash containing alternate coding
+     keys where the value is the new aa to code for. Stop codons
 
 
 
-
-
-
-2001-09-11          Last change: perl v5.6.0                    4
+2001-09-14          Last change: perl v5.6.0                    4
 
 
 
@@ -268,6 +268,28 @@ User Contributed Perl Documentation                    CompBio(3)
 User Contributed Perl Documentation                    CompBio(3)
 
 
+
+     are represented by ".". Multiple allowable values for the
+     final dna in the codon may be provided in the format
+     AT[TCA].
+
+     ID: Prefix for translated segment identifiers, default is
+     SixFrame.
+
+     SEQLEN: Minimum length of aa sequence to return, default is
+     10.
+
+     OUTPUT: A filename to pipe results to. This is recomended
+     for large dna sequences such as large contigs or whole
+     chromosomes, otherwise results are stored in memory until
+     process complete. If the value of OUTFILE is STDOUT results
+     will be sent directly to standard out.
+
+     wwwwuuuu____bbbbllllaaaasssstttt
+
+     A simple interface to the Washington University distribution
+     of blast. Currently has only been tested with the 2.0a8MP
+     release.
 
       Takes series of arguments qw($method $database $queryfile
      "parameter list","noise",$cpu_server). Method can be any allowed blast method. Database is the blastable fasta format
@@ -298,33 +320,11 @@ User Contributed Perl Documentation                    CompBio(3)
       C<%aa_hash = aa_hash;>
 
 
-EEEEXXXXPPPPOOOORRRRTTTT
-     None by default.
-
-HHHHIIIISSSSTTTTOOOORRRRYYYY
-     0.01    Original version; created by h2xs 1.20 with options
-
-               -AXC -n CompBio
-
-
-     0.44    Copy over most functions from original BMERC::bio
-             (ver 0.74), making improvements to code, mostly by
-             removing lingering locale assumptions and
-             (hopefully) improving interface, and adding OOP
-             useability .
-
-     0.45    Modifications to Simple primarilly
-
-TTTTOOOO DDDDOOOO - iiiinnnn nnnnoooo ppppaaaarrrrttttiiiiccccuuuullllaaaarrrr oooorrrrddddeeeerrrr
-     I like the basic design so far - except where large sequence
-     sets are to be munged.  There this becomes a seriouse memory
-     hog. Some faster & more efficient way needs to be provided
-     when dealing with files & large data sets.
 
 
 
 
-2001-09-11          Last change: perl v5.6.0                    5
+2001-09-14          Last change: perl v5.6.0                    5
 
 
 
@@ -334,6 +334,46 @@ TTTTOOOO DDDDOOOO - iiiinnnn nnnnoooo ppppaaaarr
 User Contributed Perl Documentation                    CompBio(3)
 
 
+
+EEEEXXXXPPPPOOOORRRRTTTT
+     None by default.
+
+HHHHIIIISSSSTTTTOOOORRRRYYYY
+     0.01    Original version; created by h2xs 1.20 with options
+
+               -AXC -n CompBio
+
+
+     0.20    Begin porting core function code for most initial
+             methods from various sources at BMERC. Write
+             protocode and placeholders for what I want in
+             initial 'complete' version.
+
+     0.44    Almost everything eneded up being rewritten
+             practically from scratch.  Removed lingering locale
+             assumptions and (hopefully) improving interface
+             (added use of %params mainly).  Added OOP useability
+             so this module should now work either way.
+
+     0.45    Modifications to Simple primarilly.
+
+     0.451   Fixed faulty statement in MANIFEST.SKIP that
+             excluded Makefile.PL from distribution (thanks to
+             Andreas Riechert for pointing this out to me almost
+             imediately).
+
+     0.46    Added some documentation, mostly on options.  Added
+             the ALTCODE option to six_frame.  Finished modifying
+             tbl_to* converters to make a pass at handeling extra
+             data feilds from table format and changing *_to_tbl
+             converters to keep extra data besides id in extra
+             fields in table format.
+
+TTTTOOOO DDDDOOOO - iiiinnnn nnnnoooo ppppaaaarrrrttttiiiiccccuuuullllaaaarrrr oooorrrrddddeeeerrrr
+     I like the basic design so far - except where large sequence
+     sets are to be munged.  There this becomes a seriouse memory
+     hog. Some faster & more efficient way needs to be provided
+     when dealing with files & large data sets.
 
      **Got it - needs work!** Get the full release of WashU Blast
      and make sure the blast stuff works with it as well.
@@ -346,6 +386,20 @@ User Contributed Perl Documentation                    CompBio(3)
      appropriate core methods.
 
      Add DNA* and GCG format handelers
+
+
+
+
+2001-09-14          Last change: perl v5.6.0                    6
+
+
+
+
+
+
+User Contributed Perl Documentation                    CompBio(3)
+
+
 
      Add handler for the genbank report type format:  1   attgc
      gtgct 11  gtgtg   gacaa Which, though annoying, seems a
@@ -375,32 +429,16 @@ User Contributed Perl Documentation                    CompBio(3)
      be far more desirable than _having_ to use a bunch of
      modules all in the CompBio namespace.
 
-     fasta and ig to tbl methods should place extra data in
-     optional fields in new table specs
-
-     tbl_to_ig needs to check for extra fields in new table
-     format and place fields in ig's optional comment lines.
-
      _error (all packages) needs to correctly report line where
      error occured.  Can this be done through caller or do I need
      to pass manually?
 
 CCCCOOOOPPPPYYYYRRRRIIIIGGGGHHHHTTTT
+     Developed at the BioMolecular Engineering Research Center at
+     Boston University under the NHLBI's Programs for Genomic
+     Applications grant.
+
      Copyright Sean Quinlan, Trustees of Boston University
-
-
-
-2001-09-11          Last change: perl v5.6.0                    6
-
-
-
-
-
-
-User Contributed Perl Documentation                    CompBio(3)
-
-
-
      2000-2001.
 
      All rights reserved. This program is free software; you can
@@ -413,6 +451,21 @@ AAAAUUUUTTTTHHHHOOOORRRR
      Please email me with any changes you make or suggestions for
      changes/additions.  Latest version is available under
      ftp://mcclintock.bu.edu/BMERC/perl/. Thank you!
+
+
+
+
+
+2001-09-14          Last change: perl v5.6.0                    7
+
+
+
+
+
+
+User Contributed Perl Documentation                    CompBio(3)
+
+
 
 SSSSEEEEEEEE AAAALLLLSSSSOOOO
      _p_e_r_l(1), CompBio::Simple, CompBio::DB.
@@ -456,7 +509,20 @@ SSSSEEEEEEEE AAAALLLLSSSSOOOO
 
 
 
-2001-09-11          Last change: perl v5.6.0                    7
+
+
+
+
+
+
+
+
+
+
+
+
+
+2001-09-14          Last change: perl v5.6.0                    8
 
 
 

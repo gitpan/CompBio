@@ -31,17 +31,17 @@ foreach (@na_seqs[0..6],$na_seqs[-1]) {
     my ($id,$naseq) = split;
     my $sref_aaseq = "";
     if ($id =~ /6$|7$|10$/) {
-        $sref_aaseq = $cbs->dna_to_protein(\$naseq,(C => 1,SEQFIX => 1,DEBUG => $DEBUG));
+        $sref_aaseq = $cbs->dna_to_aa(\$naseq,(C => 1,SEQFIX => 1,DEBUG => $DEBUG));
     } # C strand seqs
-    else { $sref_aaseq = $cbs->dna_to_protein(\$naseq,(SEQFIX => 1,DEBUG => $DEBUG)) }
+    else { $sref_aaseq = $cbs->dna_to_aa(\$naseq,(SEQFIX => 1,DEBUG => $DEBUG)) }
     print "$id\t$naseq\n$id\t$$sref_aaseq\n" if $DEBUG > 1;
     next if $$sref_aaseq =~ /\./; # bad translation
     push(@seqs,(join("\t",($id,$$sref_aaseq))));
 } # convert to aa
-my $aref_tmp = $cbs->dna_to_protein([(@na_seqs[7,8])],(SEQFIX => 1,DEBUG => $DEBUG));
+my $aref_tmp = $cbs->dna_to_aa([(@na_seqs[7,8])],(SEQFIX => 1,DEBUG => $DEBUG));
 print ref($aref_tmp)," recieved containing ",scalar(@$aref_tmp)," indices:\n@$aref_tmp\n==\n" if $DEBUG > 1;
 push(@seqs,@{$aref_tmp});
-ok(@seqs == 10 && $cbs->check_type(\@seqs) eq "TBL","dna_to_protein");
+ok(@seqs == 10 && $cbs->check_type(\@seqs) eq "TBL","Simple::dna_to_aa");
 print "$na_seqs[6]\n" if $DEBUG > 1;
 print scalar(@seqs),"\n$seqs[6]\n" if $DEBUG > 1;
 
@@ -52,17 +52,17 @@ my $AR_igseqs = $cbs->tbl_to_ig(\@seqs);
 ok($AR_igseqs && $cbs->check_type($AR_igseqs) eq "IG","Simple::tbl_to_ig");
 
 my $AR_tblseqs = $cbs->fa_to_tbl($AR_faseqs,(CLEAN => 1));
-ok($AR_tblseqs && $cbs->check_type($AR_tblseqs) eq "TBL","fa_to_tbl");
+ok($AR_tblseqs && $cbs->check_type($AR_tblseqs) eq "TBL","Simple::fa_to_tbl");
 print "$$AR_tblseqs[6]\n" if $DEBUG;
 
 $AR_tblseqs = $cbs->ig_to_tbl($AR_igseqs,(CLEAN => 1));
-ok($AR_tblseqs && $cbs->check_type($AR_tblseqs) eq "TBL","ig_to_tbl");
+ok($AR_tblseqs && $cbs->check_type($AR_tblseqs) eq "TBL","Simple::ig_to_tbl");
 print "$$AR_tblseqs[6]\n" if $DEBUG;
 
 print "$rawseq_w\n" if $DEBUG > 2;
 my @sixframe = split(/\n/,$cbs->six_frame(\$rawseq_w,(ID => "b0003-cdna",RETURN_TYPE => "SCALAR")));
 print join("\n",@sixframe),"<-\n" if $DEBUG > 2;
-ok(@sixframe && $cbs->check_type(\@sixframe) eq "TBL","six_frame");
+ok(@sixframe && $cbs->check_type(\@sixframe) eq "TBL","Simple::six_frame");
 
 @sixframe = split(/\n/,$cbs->six_frame(\$rawseq_c,(ID => "b0007-cdna",RETURN_TYPE => "SCALAR")));
 my @sfcheck = grep /b0007-cdna_1431_1/, @sixframe;
